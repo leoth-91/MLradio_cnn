@@ -23,7 +23,6 @@ if tag_res is not '':
     tag_res = '_' + tag_res
 
 
-
 print('Creating Loss Plot:')
 dpi = 300
 try:
