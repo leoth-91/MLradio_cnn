@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-
+# 
+# Written by Simone Ammazzalorso
+#
 import healpy as hp
 from healpy.visufunc import cartview
 import matplotlib as mpl
