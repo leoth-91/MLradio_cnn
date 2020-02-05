@@ -71,7 +71,7 @@ l_start = 5
 l_stop = 1500
 #size of tif image
 x_size = 2000
-y_size = x_size/2
+y_size = int(x_size/2)
 
 ###############################################################
 NPIX = 12*NSIDE**2
