@@ -1,0 +1,9 @@
+
+
+Simulazione mappe:
+python mapsim_PS.py 0 10 --tag=test --path=/Users/leo/Documents/thesis-codes/mock_simulations --out_dir=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/full --fact=1000
+
+
+Testing mappe:
+sudo python CNN_parallel.py --tag=test --tag_res=run1 --path=/Users/leo/Documents/thesis-codes/current_project_cnn/parallel/ --path_TD=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/ --path_TL=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/ --N_start=0 --N_stop=10 --N_epochs_full=1 --batch_size_full=4 --N_epochs_small=1 --batch_size_small=1 --train 
+
