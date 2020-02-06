@@ -45,6 +45,13 @@ except Exception as e:
 print('Done.')
 
 
+# colors
+# https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+color_pred_small = 'tab:cyan'
+color_pred_full = 'tab:cyan'
+color_label = 'tab:orange'
+
+
 
 for i in range(N_plot):
     plt.figure(figsize=(12,10))
@@ -54,18 +61,15 @@ for i in range(N_plot):
     print('Percentage variation:')
     print(np.round(np.abs(1-data_full[:,1]/data_full[:,2])*100,1), np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100,1))
 
-    plt.plot(data_full[:,0],data_full[:,1], 'o-', color='tab:cyan',label='prediction',linewidth=4,markersize=18)
-    plt.plot(data_full[:,0],data_full[:,2], 'o-', color='tab:orange',label='label',linewidth=4,markersize=18)
+    plt.plot(data_full[:,0],data_full[:,1], 'o-', color=color_pred_full,label='prediction',linewidth=4,markersize=18)
+    plt.plot(data_full[:,0],data_full[:,2], 'o-', color=color_label,label='label',linewidth=4,markersize=18)
 
-    # cut between 0.1053600013256073 and 0.18982000648975372
-    # plt.axvline(x=0.1053600013256073, ymin=0, ymax=1)
-    # plt.axvline(x=0.18982000648975372, ymin=0, ymax=1)
-    
+    # loc: is the theta-value that lies between the smallest large-scale and the biggest small-scale values
     loc = np.max(data_full[:,0]) + (np.min(data_small[:,0]) - np.max(data_full[:,0]))/2
     plt.axvline(x=loc, ymin=0, ymax=1, color='darkgrey',linewidth=4,markersize=18)
 
-    plt.plot(data_small[:,0],data_small[:,1], 'o-', color='tab:cyan',label=None,linewidth=4,markersize=18)
-    plt.plot(data_small[:,0],data_small[:,2], 'o-', color='tab:orange',label=None,linewidth=4,markersize=18)
+    plt.plot(data_small[:,0],data_small[:,1], 'o-', color=color_pred_small,label=None,linewidth=4,markersize=18)
+    plt.plot(data_small[:,0],data_small[:,2], 'o-', color=color_label,label=None,linewidth=4,markersize=18)
 
 
 
