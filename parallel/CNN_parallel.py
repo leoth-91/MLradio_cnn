@@ -18,6 +18,7 @@ parser.add_argument("--path_TD", type=str, help="path of training data (.tif fil
 parser.add_argument("--path_TL", type=str, help="path of training label (correlation function)", default='')
 parser.add_argument("--N_start", type=int, help="start number of the maps", default=0)
 parser.add_argument("--N_stop", type=int, help="end number of the maps", default=0)
+parser.add_argument("--N_split", type=int, help="index for splitting thetas (default = 5)", default=5)
 parser.add_argument("--max_ID", type=int, help="maximum number of maps", default=-1)
 parser.add_argument("--N_epochs_small", type=int, help="number of epochs (default = 10)", default=10)
 parser.add_argument("--N_epochs_large", type=int, help="number of epochs (default = 10)", default=10)
@@ -49,6 +50,7 @@ path_train_label_large = args.path_TL + 'large/'
 
 N_start = args.N_start
 N_stop = args.N_stop
+N_split = args.N_split
 train = args.train
 LR_small = args.LR_small
 LR_large = args.LR_large
@@ -168,7 +170,7 @@ partition_large = {'train': training_IDs_large,
              'validation': validation_IDs_large,
              'test': test_IDs_large}
 
-print("small size dataset:")
+print("Small scales size dataset:")
 print('Training with %i/%i images'
         %(len(partition_small['train']), len(partition_small['train'])+len(partition_small['validation'])+len(partition_small['test'])))
 print('Validating on %i/%i images'
@@ -176,7 +178,7 @@ print('Validating on %i/%i images'
 print('Testing on %i/%i images'
         %(len(partition_small['test']), len(partition_small['train'])+len(partition_small['validation'])+len(partition_small['test'])))
 
-print("large size dataset:")
+print("Large scales size dataset:")
 print('Training with %i/%i images'
         %(len(partition_large['train']), len(partition_large['train'])+len(partition_large['validation'])+len(partition_large['test'])))
 print('Validating on %i/%i images'
@@ -185,8 +187,8 @@ print('Testing on %i/%i images'
         %(len(partition_large['test']), len(partition_large['train'])+len(partition_large['validation'])+len(partition_large['test'])))
 
 # Reading the spectra.dat-file and store all spectra
-all_labels_small = np.transpose(np.genfromtxt(path_train_label_small, dtype=np.float32)[:,1:max_ID])
-all_labels_large = np.transpose(np.genfromtxt(path_train_label_large, dtype=np.float32)[:,1:max_ID])
+all_labels_small = np.transpose(np.genfromtxt(path_train_label_small, dtype=np.float32)[:N_split,1:max_ID])
+all_labels_large = np.transpose(np.genfromtxt(path_train_label_large, dtype=np.float32)[N_split:,1:max_ID])
 
 if len(all_labels_small)!=len(all_IDs_small):
    print('lenght labels:  lenght data:')
@@ -277,7 +279,7 @@ generator_parameters_large = {'path_data': path_train_data_large,
 
 
 # Definitions of the generators
-print('Definition of generators...')
+print('Definition of generators for small scales...')
 print(generator_parameters_small)
 training_generator_small   = image_provider.DataGenerator(partition_small['train'], labels_small, shuffle=True, **generator_parameters_small)
 validation_generator_small = image_provider.DataGenerator(partition_small['validation'], labels_small, shuffle=True, **generator_parameters_small)
@@ -285,7 +287,7 @@ test_generator_small = image_provider.DataGenerator(partition_small['test'], lab
 
 
 # Definitions of the generators
-print('Definition of generators...')
+print('Definition of generators for large scales...')
 print(generator_parameters_large)
 training_generator_large   = image_provider.DataGenerator(partition_large['train'], labels_large, shuffle=True, **generator_parameters_large)
 validation_generator_large = image_provider.DataGenerator(partition_large['validation'], labels_large, shuffle=True, **generator_parameters_large)
@@ -321,13 +323,13 @@ test_generator_large = image_provider.DataGenerator(partition_large['test'], lab
 ## Model and training on small ############################
 
 # Defining the learning model
-print('Initializing model...')
+print('Initializing model for small scales...')
 print(model_parameters_small)
 model_small = network.CNN(N_out_small, data_shape=data_shape_small, **model_parameters_small)
 
 if train==True:
     print(model_small.summary())
-    print('Fitting model...')
+    print('Fitting model for small scales...')
     # parameters fed into the fit-method
     time_start = time.time()
     fit_parameters_small = {'generator': training_generator_small,
@@ -354,7 +356,7 @@ if train==True:
     print('Elapsed time:',time.time()-time_start,'s')
 else:
     from keras.models import load_model
-    print('Loading weights...')
+    print('Loading weights for small scales...')
     model_small = load_model(path_model+'model'+tag_res+'_small.h5')
     model_small.load_weights(path_model+'weights'+tag_res+'_small.csv')
     print(model_small.summary())
@@ -365,13 +367,13 @@ else:
 ## Model and training on large ###########################
 
 # Defining the learning model
-print('Initializing model...')
+print('Initializing model for large scales...')
 print(model_parameters_large)
 model_large = network.CNN(N_out_large, data_shape=data_shape_large, **model_parameters_large)
 
 if train==True:
     print(model_large.summary())
-    print('Fitting model...')
+    print('Fitting model for large scales...')
     # parameters fed into the fit-method
     time_start = time.time()
     fit_parameters_large = {'generator': training_generator_large,
@@ -398,7 +400,7 @@ if train==True:
     print('Elapsed time:',time.time()-time_start,'s')
 else:
     from keras.models import load_model
-    print('Loading weights...')
+    print('Loading weights for large scales...')
     model_large = load_model(path_model+'model'+tag_res+'_large.h5')
     model_large.load_weights(path_model+'weights'+tag_res+'_large.csv')
     print(model_large.summary())
@@ -410,8 +412,10 @@ else:
 
 
 ## Testing ###########################################
-thetas_small = np.transpose(np.genfromtxt(path_train_label_small, dtype=np.float32)[:,0])
-print('Running prediction:')
+thetas_small = np.transpose(np.genfromtxt(path_train_label_small, dtype=np.float32)[:N_split,0])
+print('thetas for small scales (deg):')
+print(thetas_small)
+print('Running prediction for small scales:')
 pred_small = model_small.predict_generator(test_generator_small, verbose=1)
 target_small = np.asarray([*test_generator_small.labels.values()])[num2_small:]     # the * unpacks the dictionary_values-type
 
@@ -430,8 +434,10 @@ for k in range(target_small.shape[0]-target_small.shape[0]%batch_size_small):
 
 
 ## Testing ###########################################
-thetas_large = np.transpose(np.genfromtxt(path_train_label_large, dtype=np.float32)[:,0])
-print('Running prediction:')
+thetas_large = np.transpose(np.genfromtxt(path_train_label_large, dtype=np.float32)[N_split:,0])
+print('thetas for large scales (deg):')
+print(thetas_large)
+print('Running prediction for large scales:')
 pred_large = model_large.predict_generator(test_generator_large, verbose=1)
 target_large = np.asarray([*test_generator_large.labels.values()])[num2_large:]     # the * unpacks the dictionary_values-type
 
