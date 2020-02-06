@@ -87,9 +87,10 @@ for i in range(N_plot):
     plt.yscale('log')
     # plt.tick_params(direction='in', width=2, length=5, axis='both', which='major', labelsize=10, pad=7)#,length=6,width=3)
     # plt.tick_params(direction='in', width=2, length=5, axis='both', which='minor', labelsize=10, pad=7)#,length=6,width=3)
-    plt.tick_params(direction='in', length=5, axis='both', which='major', labelsize=10, pad=7)#,length=6,width=3)
-    plt.tick_params(direction='in', length=5, axis='both', which='minor', labelsize=10, pad=7)#,length=6,width=3)
+    plt.tick_params(direction='in', length=5, axis='both', which='major', labelsize=15, pad=7)#,length=6,width=3)
+    plt.tick_params(direction='in', length=5, axis='both', which='minor', labelsize=15, pad=7)#,length=6,width=3)
     plt.legend(loc='upper right',fontsize=12,framealpha=0.5, fancybox=True)
+
     plt.savefig(path_dest+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.png', dpi=dpi)
     #plt.show()
     plt.clf()
