@@ -1,0 +1,5 @@
+# ignore all logs
+*.log
+*.err
+utility/__pycache__/
+parallel/utility/__pycache__/

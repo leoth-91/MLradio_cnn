@@ -9,7 +9,7 @@ rcParams.update({'figure.autolayout': True})
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--tag_res", type=str, help="tag of the network results", default='')
-parser.add_argument("--path", type=str, help="general path of results", default='/home/simone/RadioML/results/')
+parser.add_argument("--path", type=str, help="general path of results", default='/home/simone/RadioML/')
 parser.add_argument("--path_dest", type=str, help="path of plots", default='/home/simone/RadioML/plots/')
 parser.add_argument("--N_plot", type=int, help="number of plots to produce (default: 4)", default=4)
 
@@ -22,12 +22,16 @@ N_plot = args.N_plot
 if tag_res is not '':
     tag_res = '_' + tag_res
 
+if path is not '' and path[-1] is not '/':
+    path = path + '/'
 
+if path_dest is not '' and path_dest[-1] is not '/':
+    path_dest = path_dest + '/'
 
 print('Creating Loss Plot:')
 dpi = 300
 try:
-    loss = np.transpose(np.genfromtxt(path+'/loss_function.txt', dtype=np.float32))
+    loss = np.transpose(np.genfromtxt(path+'loss_function.txt', dtype=np.float32))
 
     plt.plot(loss[0], loss[1], '.-')
     plt.ylabel('Loss')
@@ -37,13 +41,10 @@ try:
     # plt.ylim((0,0.015))
     plt.xlim((np.min(loss[0]), np.max(loss[0])*1.01))
     # plt.grid()
-    plt.savefig(path_dest+'/0_loss.png', dpi=dpi)
+    plt.savefig(path_dest+'0_loss.png', dpi=dpi)
     plt.close()
 except Exception as e:
     print(e)
-
-print('Done.')
-
 
 # colors
 # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
@@ -58,8 +59,8 @@ color_label = 'black'
 
 for i in range(N_plot):
     # plt.figure(figsize=(12,10))
-    data_full = np.genfromtxt(path+'_full/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
-    data_small = np.genfromtxt(path+'_small/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
+    data_full = np.genfromtxt(path+'results_small/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'_small.txt')
+    data_small = np.genfromtxt(path+'results_large/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'_large.txt')
 
     # Pathing together the targets to have them as a single connected curve
     thetas = np.concatenate((data_full[:,0], data_small[:,0]))
@@ -94,12 +95,4 @@ for i in range(N_plot):
     plt.savefig(path_dest+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.png', dpi=dpi)
     #plt.show()
     plt.clf()
-
-
-
-
-
-
-
-
-
+print('Done.')
