@@ -5,5 +5,7 @@ python mapsim_PS.py 0 10 --tag=test --path=/Users/leo/Documents/thesis-codes/moc
 
 
 Testing mappe:
-sudo python CNN_parallel.py --tag=test --tag_res=run1 --path=/Users/leo/Documents/thesis-codes/current_project_cnn/parallel/ --path_TD=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/ --path_TL=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/ --N_start=0 --N_stop=10 --N_epochs_full=1 --batch_size_full=4 --N_epochs_small=1 --batch_size_small=1 --train 
+sudo python CNN_parallel.py --tag=test --tag_res=run1 --path=/Users/leo/Documents/thesis-codes/current_project_cnn/parallel/ --path_TD=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/ --path_TL=/Users/leo/Documents/thesis-codes/DATA/mapsim_PS_parallel/ --N_start=0 --N_stop=10 --N_epochs_full=1 --batch_size_full=4 --N_epochs_small=1 --batch_size_small=1 --train
 
+CNN parallel:
+python CNN_parallel.py --tag=CNN_GAL --tag_res=run1_parall --path=/home/simone/RadioML/ --path_TD=/home/simone/RadioML/data/mapsim_PS_GAL/ --path_TL=/home/simone/RadioML/data/ --N_start=0 --N_stop=10000 --N_epochs_small=1 --N_epochs_large=1 --batch_size_small=16 --batch_size_large=16 --train --suffix=x1000 --refined

@@ -9,7 +9,6 @@ import time
 
 from utility import image_provider
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--tag", type=str, help="tag of the data run", default='')
 parser.add_argument("--tag_res", type=str, help="tag of the network results", default='')
@@ -40,21 +39,21 @@ tag = args.tag
 tag_res = args.tag_res
 path = args.path
 
+path_train_data = args.path_TD
+path_train_label = args.path_TL
 
-path_train_data_small = args.path_TD + 'small/'
-path_train_data_large = args.path_TD + 'large/'
+path_train_data_small = path_train_data
+path_train_data_large = path_train_data
 
-path_train_label_small = args.path_TL + 'small/'
-path_train_label_large = args.path_TL + 'large/'
-
+path_train_label_small = path_train_label
+path_train_label_large = path_train_label
 
 N_start = args.N_start
 N_stop = args.N_stop
-N_split = args.N_split
+N_split = args.N_split #starting theta
 train = args.train
 LR_small = args.LR_small
 LR_large = args.LR_large
-
 norm_label = args.norm_label
 norm_data = args.norm_data
 max_ID = args.max_ID
@@ -217,15 +216,11 @@ if norm_label:
 #           'msim_0001_data': [0.082, 0.20930, ....]],
 #           ....}
 
-
-
-
 labels_small = {}
 for k,label in enumerate(all_IDs_small):
     labels_small[label] = all_labels_small[k]
 
 # Number of output nodes has to be the number of points in the correlation function
-#N_out = len(labels['msim_'+tag+'0000_data'])
 N_out_small = len(all_labels_small[0])
 
 # Read a single image in order to determine the pixel-size
@@ -237,10 +232,6 @@ n_channels_small = 1
 
 # data shape for the input of the CNN
 data_shape_small = (n_x_small, n_y_small, n_channels_small)
-
-
-
-
 
 labels_large = {}
 for k,label in enumerate(all_IDs_large):
@@ -259,10 +250,6 @@ n_channels_large = 1
 
 # data shape for the input of the CNN
 data_shape_large = (n_x_large, n_y_large, n_channels_large)
-
-
-
-
 
 
 # parameters for the data-generators
@@ -293,34 +280,8 @@ training_generator_large   = image_provider.DataGenerator(partition_large['train
 validation_generator_large = image_provider.DataGenerator(partition_large['validation'], labels_large, shuffle=True, **generator_parameters_large)
 test_generator_large = image_provider.DataGenerator(partition_large['test'], labels_large, shuffle=False, **generator_parameters_large)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ##########################################################
-## Model and training on small ############################
+## Model and training on small ###########################
 
 # Defining the learning model
 print('Initializing model for small scales...')
@@ -335,11 +296,12 @@ if train==True:
     fit_parameters_small = {'generator': training_generator_small,
                       'validation_data': validation_generator_small,
                       'epochs': N_epochs_small}
+    print(fit_parameters_small)
     # training the model
     history_small = model_small.fit_generator(**fit_parameters_small)
 
-    model.save(path_model+'model'+tag_res+'_small.h5')
-    model.save_weights(path_model+'weights'+tag_res+'_small.csv')
+    model_small.save(path_model+'model'+tag_res+'_small.h5')
+    model_small.save_weights(path_model+'weights'+tag_res+'_small.csv')
 
     # Creating a file to store the loss function:
     epochs_small = np.array(range(1,1+N_epochs_small))
@@ -350,9 +312,9 @@ if train==True:
     with open(path_model+'loss_function'+tag_res+'_small.txt','w') as stats:
         stats.write('#Epoch  Loss\n')
 
-    for k in range(len(epochs)):
+    for k in range(len(epochs_small)):
         with open(path_model+'loss_function'+tag_res+'.txt_small','a') as stats:
-            stats.write('{:}    {:}\n'.format(epochs[k], loss_values[k]))
+            stats.write('{:}    {:}\n'.format(epochs_small[k], loss_values_small[k]))
     print('Elapsed time:',time.time()-time_start,'s')
 else:
     from keras.models import load_model
@@ -360,8 +322,6 @@ else:
     model_small = load_model(path_model+'model'+tag_res+'_small.h5')
     model_small.load_weights(path_model+'weights'+tag_res+'_small.csv')
     print(model_small.summary())
-
-
 
 ##########################################################
 ## Model and training on large ###########################
@@ -382,8 +342,8 @@ if train==True:
     # training the model
     history_large = model_large.fit_generator(**fit_parameters_large)
 
-    model.save(path_model+'model'+tag_res+'_large.h5')
-    model.save_weights(path_model+'weights'+tag_res+'_large.csv')
+    model_large.save(path_model+'model'+tag_res+'_large.h5')
+    model_large.save_weights(path_model+'weights'+tag_res+'_large.csv')
 
     # Creating a file to store the loss function:
     epochs_large = np.array(range(1,1+N_epochs_large))
@@ -394,9 +354,9 @@ if train==True:
     with open(path_model+'loss_function'+tag_res+'_large.txt','w') as stats:
         stats.write('#Epoch  Loss\n')
 
-    for k in range(len(epochs)):
+    for k in range(len(epochs_large)):
         with open(path_model+'loss_function'+tag_res+'.txt_large','a') as stats:
-            stats.write('{:}    {:}\n'.format(epochs[k], loss_values[k]))
+            stats.write('{:}    {:}\n'.format(epochs_large[k], loss_values_large[k]))
     print('Elapsed time:',time.time()-time_start,'s')
 else:
     from keras.models import load_model
@@ -404,11 +364,6 @@ else:
     model_large = load_model(path_model+'model'+tag_res+'_large.h5')
     model_large.load_weights(path_model+'weights'+tag_res+'_large.csv')
     print(model_large.summary())
-
-
-
-
-
 
 
 ## Testing ###########################################
@@ -424,7 +379,7 @@ for k in range(target_small.shape[0]-target_small.shape[0]%batch_size_small):
     with open(path_results_small+'2-PCF_map_'+str(k).zfill(5)+tag_res+'_small.txt','w') as stats_small:
         stats_small.write('#theta  pred    target\n')
 
-    for i in range(len(thetas)):
+    for i in range(len(thetas_small)):
         with open(path_results_small+'2-PCF_map_'+str(k).zfill(5)+tag_res+'_small.txt','a') as stats_small:
             if norm_label:
                 stats_small.write('{:}    {:}    {:}\n'.format(thetas_small[i], pred_small[k,i]*max_value_label_small, target[k,i]*max_value_label_small))
@@ -446,7 +401,7 @@ for k in range(target_large.shape[0]-target_large.shape[0]%batch_size_large):
     with open(path_results_large+'2-PCF_map_'+str(k).zfill(5)+tag_res+'_large.txt','w') as stats_large:
         stats_large.write('#theta  pred    target\n')
 
-    for i in range(len(thetas)):
+    for i in range(len(thetas_large)):
         with open(path_results_large+'2-PCF_map_'+str(k).zfill(5)+tag_res+'_large.txt','a') as stats_large:
             if norm_label:
                 stats_large.write('{:}    {:}    {:}\n'.format(thetas_large[i], pred_large[k,i]*max_value_label_large, target[k,i]*max_value_label_large))

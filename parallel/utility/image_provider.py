@@ -7,7 +7,7 @@ from PIL import Image
 # https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, list_IDs, labels, path_data, dim=(1000,2000), batch_size=100, n_channels=1, N_out=10, shuffle=False, norm=False):
+    def __init__(self, list_IDs, labels, path_data, dim=(1000,2000), batch_size=100, n_channels=1, N_out=10, shuffle=True, norm=True):
         'Initialization'
         self.dim = dim
         self.path_data = path_data
@@ -15,7 +15,6 @@ class DataGenerator(keras.utils.Sequence):
         self.labels = labels
         self.list_IDs = list_IDs
         self.n_channels = n_channels
-        self.shape = (dim[0], dim[1], self.n_channels)
         self.shuffle = shuffle
         self.norm = norm
         self.N_out = N_out
@@ -48,15 +47,6 @@ class DataGenerator(keras.utils.Sequence):
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
-    def __norm(self, image):
-        '''
-        norming the image values to -1...+1
-        '''
-        # image = image*2
-        image = image/255.0
-        # image = image - 1.0
-        return image
-
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         dtype = np.float32
@@ -72,9 +62,9 @@ class DataGenerator(keras.utils.Sequence):
             # Store label
             y[i] = self.labels[ID]
             if self.norm == True:
-                X[i,] = self.__norm(X[i,])
+                X[i,] = X[i,]/255.0     # norming pixel values to 0.0 ... 1.0
                 # y[i] = y[i]/np.max(self.labels)
-                # Don't do that here, you need to know the maximum value for later
+                # Don't do that here, you need to know the maximum value for later purposes!
         return X, y
 
 

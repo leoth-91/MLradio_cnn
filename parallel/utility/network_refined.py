@@ -5,18 +5,20 @@ from keras import losses
 from keras import activations
 from keras import initializers
 
+
 def CNN(N_output=10, kernel_size=(3,3), stride=1, pool_size=(2,2), data_shape=(32,32,1), learning_rate=1E-4, decay_rate=1E-4):
     act = activations.relu
-
+    padding = 'same'
+    print('HERE')
     input_img= Input(shape=data_shape)
-    layer_1 = Conv2D(filters=64, kernel_size=kernel_size, activation=act, strides=stride)(input_img)
-    layer_1 = MaxPooling2D(pool_size=pool_size)(layer_1)
+    layer_1 = Conv2D(filters=64, kernel_size=(15,15), activation=act, strides=stride, padding=padding)(input_img)
+    #layer_1 = MaxPooling2D(pool_size=(3,3), padding=padding)(layer_1)
 
-    layer_2 = Conv2D(filters=32, kernel_size=kernel_size, activation=act, strides=stride)(layer_1)
-    layer_2 = MaxPooling2D(pool_size=pool_size)(layer_2)
+    layer_2 = Conv2D(filters=32, kernel_size=(8,8), activation=act, strides=stride, padding=padding)(layer_1)
+    #layer_2 = MaxPooling2D(pool_size=(3,3), padding=padding)(layer_2)
 
-    layer_3 = Conv2D(filters=8, kernel_size=kernel_size, activation=act, strides=stride)(layer_2)
-    layer_3 = MaxPooling2D(pool_size=pool_size)(layer_3)
+    layer_3 = Conv2D(filters=8, kernel_size=(3,3), activation=act, strides=stride, padding=padding)(layer_2)
+    #layer_3 = MaxPooling2D(pool_size=(2,2), padding=padding)(layer_3)
 
     layer_f = Flatten()(layer_3)
     layer_d = Dense(units=N_output, activation=act)(layer_f)
