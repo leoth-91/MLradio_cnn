@@ -1,6 +1,3 @@
-# 
-# Written by Simone Ammazzalorso
-#
 from matplotlib import pyplot as plt
 import numpy as np
 import argparse
@@ -26,6 +23,7 @@ if tag_res is not '':
     tag_res = '_' + tag_res
 
 
+
 print('Creating Loss Plot:')
 dpi = 300
 try:
@@ -47,16 +45,33 @@ except Exception as e:
 print('Done.')
 
 
+# colors
+# https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+color_pred_small = 'tab:cyan'
+color_pred_full = 'tab:cyan'
+color_label = 'tab:orange'
+
+
 
 for i in range(N_plot):
     plt.figure(figsize=(12,10))
-    data = np.genfromtxt(path+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
+    data_full = np.genfromtxt(path+'_full/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
+    data_small = np.genfromtxt(path+'_small/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
 
     print('Percentage variation:')
-    print(np.round(np.abs(1-data[:,1]/data[:,2])*100,1))
+    print(np.round(np.abs(1-data_full[:,1]/data_full[:,2])*100,1), np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100,1))
 
-    plt.plot(data[:,0],data[:,1],'o-',label='prediction',linewidth=4,markersize=18)
-    plt.plot(data[:,0],data[:,2],'o-',label='label',linewidth=4,markersize=18)
+    plt.plot(data_full[:,0],data_full[:,1], 'o-', color=color_pred_full,label='prediction',linewidth=4,markersize=18)
+    plt.plot(data_full[:,0],data_full[:,2], 'o-', color=color_label,label='label',linewidth=4,markersize=18)
+
+    # loc: is the theta-value that lies between the smallest large-scale and the biggest small-scale values
+    loc = np.max(data_full[:,0]) + (np.min(data_small[:,0]) - np.max(data_full[:,0]))/2
+    plt.axvline(x=loc, ymin=0, ymax=1, color='darkgrey',linewidth=4,markersize=18)
+
+    plt.plot(data_small[:,0],data_small[:,1], 'o-', color=color_pred_small,label=None,linewidth=4,markersize=18)
+    plt.plot(data_small[:,0],data_small[:,2], 'o-', color=color_label,label=None,linewidth=4,markersize=18)
+
+
 
     plt.xlabel(r'$\theta \, \mathrm{[deg]}$',fontsize=35)
     plt.ylabel(r'$\xi \, (\theta) \, \mathrm{X 10^3}$',fontsize=35)
