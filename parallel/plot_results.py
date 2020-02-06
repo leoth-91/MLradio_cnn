@@ -47,40 +47,50 @@ print('Done.')
 
 # colors
 # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
-color_pred_small = 'tab:cyan'
-color_pred_full = 'tab:cyan'
-color_label = 'tab:orange'
+color_pred_small = 'dodgerblue'
+# color_pred_full = 'red'
+color_pred_full = 'limegreen'
+color_label = 'black'
 
+# markers:
+# https://matplotlib.org/api/markers_api.html
 
 
 for i in range(N_plot):
-    plt.figure(figsize=(12,10))
+    # plt.figure(figsize=(12,10))
     data_full = np.genfromtxt(path+'_full/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
     data_small = np.genfromtxt(path+'_small/'+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.txt')
 
+    # Pathing together the targets to have them as a single connected curve
+    thetas = np.concatenate((data_full[:,0], data_small[:,0]))
+    target = np.concatenate((data_full[:,2], data_small[:,2]))
+
     print('Percentage variation:')
-    print(np.round(np.abs(1-data_full[:,1]/data_full[:,2])*100,1), np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100,1))
+    print(np.round(np.abs(1-data_full[:,1]/data_full[:,2])*100,1), ' and ', np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100,1))
 
-    plt.plot(data_full[:,0],data_full[:,1], 'o-', color=color_pred_full,label='prediction',linewidth=4,markersize=18)
-    plt.plot(data_full[:,0],data_full[:,2], 'o-', color=color_label,label='label',linewidth=4,markersize=18)
 
+    plt.plot(thetas,target, '.-', color=color_label,label='Target function',linewidth=2,markersize=12)
+
+    plt.plot(data_full[:,0],data_full[:,1],   '+', color=color_pred_full, label='Prediction small scale',linewidth=4,markersize=15, markeredgewidth=2)
+    plt.plot(data_small[:,0],data_small[:,1], '+', color=color_pred_small,label='Prediction large scale',linewidth=4,markersize=15, markeredgewidth=2)
+
+
+    # Plot division line
     # loc: is the theta-value that lies between the smallest large-scale and the biggest small-scale values
-    loc = np.max(data_full[:,0]) + (np.min(data_small[:,0]) - np.max(data_full[:,0]))/2
-    plt.axvline(x=loc, ymin=0, ymax=1, color='darkgrey',linewidth=4,markersize=18)
-
-    plt.plot(data_small[:,0],data_small[:,1], 'o-', color=color_pred_small,label=None,linewidth=4,markersize=18)
-    plt.plot(data_small[:,0],data_small[:,2], 'o-', color=color_label,label=None,linewidth=4,markersize=18)
+    # loc = np.max(data_full[:,0]) + (np.min(data_small[:,0]) - np.max(data_full[:,0]))/2
+    # plt.axvline(x=loc, ymin=0, ymax=1, color='darkgrey',linewidth=4,markersize=18)
 
 
-
-    plt.xlabel(r'$\theta \, \mathrm{[deg]}$',fontsize=35)
-    plt.ylabel(r'$\xi \, (\theta) \, \mathrm{X 10^3}$',fontsize=35)
+    plt.xlabel(r'$\theta \, \mathrm{[deg]}$',fontsize=15)
+    plt.ylabel(r'$\xi \, (\theta) \, \mathrm{X 10^3}$',fontsize=15)
     plt.xscale('log')
     plt.yscale('log')
-    plt.tick_params(direction='in', width=2, length=5, axis='both', which='major', labelsize=30, pad=7)#,length=6,width=3)
-    plt.tick_params(direction='in', width=2, length=5, axis='both', which='minor', labelsize=30, pad=7)#,length=6,width=3)
-    plt.legend(loc='upper right',fontsize=30,framealpha=0.5,fancybox=True)
-    plt.savefig(path_dest+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.png')
+    # plt.tick_params(direction='in', width=2, length=5, axis='both', which='major', labelsize=10, pad=7)#,length=6,width=3)
+    # plt.tick_params(direction='in', width=2, length=5, axis='both', which='minor', labelsize=10, pad=7)#,length=6,width=3)
+    plt.tick_params(direction='in', length=5, axis='both', which='major', labelsize=10, pad=7)#,length=6,width=3)
+    plt.tick_params(direction='in', length=5, axis='both', which='minor', labelsize=10, pad=7)#,length=6,width=3)
+    plt.legend(loc='upper right',fontsize=12,framealpha=0.5, fancybox=True)
+    plt.savefig(path_dest+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.png', dpi=dpi)
     #plt.show()
     plt.clf()
 
