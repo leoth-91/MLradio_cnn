@@ -68,6 +68,10 @@ color_label = 'dimgray'
 #         return s
 
 
+# This file stores the displayed relative difference between target and prediction in a txt-file
+with open(path_dest+'percentage_variations.txt','w') as stats:
+    stats.write('#Map-number  small-scale      large-scale\n')
+
 for i in range(N_plot):
     # plt.figure(figsize=(12,10))
     map_num = str(i).zfill(5)
@@ -79,7 +83,14 @@ for i in range(N_plot):
     target = np.concatenate((data_small[:,2], data_large[:,2]))
 
     print('Percentage variation of map number {:}:'.format(map_num))
-    print(np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100,1), ' and ', np.round(np.abs(1-data_large[:,1]/data_large[:,2])*100,1))
+    variation_small = np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100, 2)
+    variation_large = np.round(np.abs(1-data_large[:,1]/data_large[:,2])*100, 2)
+    print(variation_small, ' and ', variation_large)
+    print('Overall variation: {:}'.format(np.round(sum(variation_small)+sum(variation_large)), 3))
+
+    # storing the values as file...
+    with open(path_dest+'percentage_variations.txt','a') as stats:
+        stats.write('{:}    {:}     {:}\n'.format(map_num, variation_small, variation_large))
 
     plt.plot(thetas,target, '.-', color=color_label, label='Target function', linewidth=2, markersize=12)
     plt.plot(data_small[:,0],data_small[:,1],   '+', color=color_pred_full, label='Prediction small scale', linewidth=4, markersize=15, markeredgewidth=2)
