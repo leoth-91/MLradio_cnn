@@ -70,7 +70,7 @@ color_label = 'dimgray'
 
 # This file stores the displayed relative difference between target and prediction in a txt-file
 with open(path_dest+'percentage_variations.txt','w') as stats:
-    stats.write('#Map-number  small-scale      large-scale\n')
+    stats.write('#Map-number   total     small-scale      large-scale\n')
 
 for i in range(N_plot):
     # plt.figure(figsize=(12,10))
@@ -86,15 +86,18 @@ for i in range(N_plot):
     variation_small = np.round(np.abs(1-data_small[:,1]/data_small[:,2])*100, 2)
     variation_large = np.round(np.abs(1-data_large[:,1]/data_large[:,2])*100, 2)
     print(variation_small, ' and ', variation_large)
-    print('Overall variation: {:}'.format(np.round(sum(variation_small)+sum(variation_large)), 3))
+    total_var = np.round(sum(variation_small)+sum(variation_large), 3)
+    print('Overall variation: {:}'.format(total_var))
 
     # storing the values as file...
     with open(path_dest+'percentage_variations.txt','a') as stats:
-        stats.write('{:}    {:}     {:}\n'.format(map_num, variation_small, variation_large))
+        stats.write('{:}    {:}     {:}     {:}\n'.format(map_num, total_var, variation_small, variation_large))
 
     plt.plot(thetas,target, '.-', color=color_label, label='Target function', linewidth=2, markersize=12)
-    plt.plot(data_small[:,0],data_small[:,1],   '+', color=color_pred_full, label='Prediction small scale', linewidth=4, markersize=15, markeredgewidth=2)
+    plt.plot(data_small[:,0],data_small[:,1], '+', color=color_pred_full, label='Prediction small scale', linewidth=4, markersize=15, markeredgewidth=2)
     plt.plot(data_large[:,0],data_large[:,1], '+', color=color_pred_small,label='Prediction large scale', linewidth=4, markersize=15, markeredgewidth=2)
+
+    # plt.ylim((0.1, 20))
 
     # Plot dividing :ine
     # loc: is the theta-value that lies between the smallest large-scale and the biggest small-scale values
@@ -122,6 +125,8 @@ for i in range(N_plot):
     plt.savefig(path_dest+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.png', dpi=dpi)
     #plt.show()
     plt.clf()
+
+
 
 
 
