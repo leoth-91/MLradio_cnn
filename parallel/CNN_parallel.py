@@ -29,9 +29,10 @@ parser.add_argument("--LR_small", type=float, help="learning rate small scale", 
 parser.add_argument("--LR_large", type=float, help="learning rate large scale", default=1.e-5)
 parser.add_argument("--batch_size_small", type=int, help="batch_size (default = 10)", default=10)
 parser.add_argument("--batch_size_large", type=int, help="batch_size (default = 10)", default=10)
-parser.add_argument("--kernel_size", type=int, help="kernel_size (default = 5)", default=5)
-parser.add_argument("--pool_size", type=int, help="pool_size (default = 4)", default=4)
+parser.add_argument("--kernel_size", type=tuple, help="kernel_size (default = 5)", default=((5,5),(5,5),(5,5)))
+parser.add_argument("--pool_size", type=tuple, help="pool_size (default = 2)", default=((2,2),(2,2),(2,2)))
 parser.add_argument("--stride", type=int, help="stride (default = 1)", default=1)
+parser.add_argument("--pool", action='store_true', help="switch on pooling")
 parser.add_argument("--train", action='store_true', help="train the CNN")
 parser.add_argument("--refined", action='store_true', help="using different kernel size for each layer")
 parser.add_argument("--norm_label", action='store_true', help="normalization of labels")
@@ -99,18 +100,22 @@ batch_size_large = args.batch_size_large
 KS = args.kernel_size
 PS = args.pool_size
 stride = args.stride
+pool = args.pool
 
+#NOTE: we can improve by separating KS_small and KS_large
 model_parameters_small = {'learning_rate': LR_small,      # 1E-5
                        'decay_rate': LR_small,      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
-                      'kernel_size': (KS,KS),
-                        'pool_size': (PS,PS),
-                           'stride': stride
+                      'kernel_size': KS,
+                        'pool_size': PS,
+                           'stride': (1,1,1),
+                         'pooling' : pool
                     }
 model_parameters_large = {'learning_rate': LR_large,      # 1E-5
                        'decay_rate': LR_large,      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
-                      'kernel_size': (KS,KS),
-                        'pool_size': (PS,PS),
-                           'stride': stride
+                      'kernel_size': KS,
+                        'pool_size': PS,
+                           'stride': (1,1,1),
+                         'pooling' : pool
                     }
 ##########################################################
 ##########################################################
@@ -196,6 +201,8 @@ print('Testing on %i/%i images'
         %(len(partition_large['test']), len(partition_large['train'])+len(partition_large['validation'])+len(partition_large['test'])))
 
 # Reading the spectra.dat-file and store all spectra
+if max_ID!=-1:
+    max_ID=max_ID+1
 all_labels_small = np.transpose(np.genfromtxt(path_train_label_small, dtype=np.float32)[:N_split,1:max_ID])
 all_labels_large = np.transpose(np.genfromtxt(path_train_label_large, dtype=np.float32)[N_split:,1:max_ID])
 

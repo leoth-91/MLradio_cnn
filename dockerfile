@@ -21,10 +21,10 @@ RUN /bin/bash -c "source activate tensorflow" && pip uninstall tensorflow tensor
 #
 RUN mkdir /archive && mkdir /archive/home && mkdir /archive/home/sammazza && mkdir /archive/home/sammazza/radioML && mkdir /archive/home/sammazza/radioML/data && mkdir /run_CNN
 WORKDIR /run_CNN
-ADD CNN.py /run_CNN/CNN.py
-ADD utility/image_provider.py /run_CNN/utility/image_provider.py
-ADD utility/network.py /run_CNN/utility/network.py
-ADD utility/network_refined.py /run_CNN/utility/network_refined.py
+ADD parallel/CNN_parallel.py /run_CNN/CNN_parallel.py
+ADD parallel/utility/image_provider.py /run_CNN/utility/image_provider.py
+ADD parallel/utility/network.py /run_CNN/utility/network.py
+ADD parallel/utility/network_refined.py /run_CNN/utility/network_refined.py
 
 # Overwrite the entrypoint of the base Docker image (python)
 #CMD ["/bin/bash","-c","/archive/home/sammazza/radioML/script.sh"]
