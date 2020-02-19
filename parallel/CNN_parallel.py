@@ -7,6 +7,10 @@ import h5py
 import argparse
 import time
 
+import os
+# this somehow fixes a strange error...
+os.environ['KMP_DUPLICATE_LIB_OK']='True'  
+
 from utility import image_provider
 
 parser = argparse.ArgumentParser()
@@ -153,6 +157,12 @@ num2_small = int(len(all_IDs_small)-0.05*len(all_IDs_small))
 num1_large = int(len(all_IDs_large)-0.15*len(all_IDs_large))
 num2_large = int(len(all_IDs_large)-0.05*len(all_IDs_large))
 
+if train == False:
+  num1_small = 0
+  num2_small = 0
+  num1_large = 0
+  num2_large = 0
+
 training_IDs_small = all_IDs_small[:num1_small]
 validation_IDs_small = all_IDs_small[num1_small:num2_small]
 test_IDs_small = all_IDs_small[num2_small:]
@@ -224,7 +234,7 @@ for k,label in enumerate(all_IDs_small):
 N_out_small = len(all_labels_small[0])
 
 # Read a single image in order to determine the pixel-size
-image_small = np.array(Image.open(path_train_data_small+partition_small['train'][0]+'.tif'))
+image_small = np.array(Image.open(path_train_data_small+partition_small['test'][0]+'.tif'))
 
 n_x_small = image_small.shape[0]    # the shorter side
 n_y_small = image_small.shape[1]
@@ -242,7 +252,7 @@ for k,label in enumerate(all_IDs_large):
 N_out_large = len(all_labels_large[0])
 
 # Read a single image in order to determine the pixel-size
-image_large = np.array(Image.open(path_train_data_large+partition_large['train'][0]+'.tif'))
+image_large = np.array(Image.open(path_train_data_large+partition_large['test'][0]+'.tif'))
 
 n_x_large = image_large.shape[0]    # the shorter side
 n_y_large = image_large.shape[1]
