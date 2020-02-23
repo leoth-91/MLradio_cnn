@@ -12,7 +12,7 @@ rcParams.update({'figure.autolayout': True})
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--tag_res", type=str, help="tag of the network results", default='')
-parser.add_argument("--path", type=str, help="general path of results", default='/home/simone/RadioML/results/')
+parser.add_argument("--path", type=str, help="general path of results", default='/home/simone/RadioML/results')
 parser.add_argument("--path_dest", type=str, help="path of plots", default='/home/simone/RadioML/plots/')
 parser.add_argument("--N_plot", type=int, help="number of plots to produce (default: 4)", default=4)
 parser.add_argument("--linear", action='store_true', help="Plot on linear scale")
@@ -75,8 +75,8 @@ with open(path_dest+'percentage_variations.txt','w') as stats:
 for i in range(N_plot):
     # plt.figure(figsize=(12,10))
     map_num = str(i).zfill(5)
-    data_small = np.genfromtxt(path+'_small/'+'2-PCF_map_'+map_num+tag_res+'_parall_small.txt')
-    data_large = np.genfromtxt(path+'_large/'+'2-PCF_map_'+map_num+tag_res+'_parall_large.txt')
+    data_small = np.genfromtxt(path+'_small/'+'2-PCF_map_'+map_num+tag_res+'_small.txt')
+    data_large = np.genfromtxt(path+'_large/'+'2-PCF_map_'+map_num+tag_res+'_large.txt')
 
     # Pathing together the targets to have them as a single connected curve
     thetas = np.concatenate((data_small[:,0], data_large[:,0]))
@@ -115,7 +115,7 @@ for i in range(N_plot):
 
     plt.tick_params(length=5, which='major', labelsize=15, pad=7)#,length=6,width=3)
     plt.tick_params(length=5, which='minor', labelsize=15, pad=7)#,length=6,width=3)
-    
+
     # ax = plt.gca()
     # ax.yaxis.set_major_formatter(LogFormatter())
     # ax.xaxis.set_major_formatter(LogFormatter())
@@ -125,15 +125,3 @@ for i in range(N_plot):
     plt.savefig(path_dest+'2-PCF_map_'+str(i).zfill(5)+tag_res+'.png', dpi=dpi)
     #plt.show()
     plt.clf()
-
-
-
-
-
-
-
-
-
-
-
-
