@@ -19,6 +19,7 @@ parser.add_argument("--path", type=str, help="general path of input files and re
 parser.add_argument("--path_dest", type=str, help="path of plots", default='/home/simone/RadioML/plots/')
 parser.add_argument("--label_file", type=str, help="APS file", default='/home/simone/RadioML/data/Cl_CNN_0_10000_label.dat')
 parser.add_argument("--N_plot", type=int, help="number of plots to produce (default: 1)", default=1)
+parser.add_argument("--N_begin", type=int, help="matching with testing subset (default: 9500)", default=9500)
 parser.add_argument("--linear", action='store_true', help="Plot on linear scale")
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1000)", default=1000)
 
@@ -30,7 +31,7 @@ N_plot = args.N_plot
 linear = args.linear
 label_file = args.label_file
 fact = args.fact #factor used to normalize CCF
-N_begin = 9500 #Cl matching CCF testing
+N_begin = args.N_begin #Cl matching CCF testing
 theta_min = 0.01
 theta_max = 2
 
