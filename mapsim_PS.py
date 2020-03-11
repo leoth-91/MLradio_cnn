@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# 
+#
 # Written by Simone Ammazzalorso
 #
 import healpy as hp
@@ -18,17 +18,23 @@ import argparse
 from PIL import Image
 
 parser = argparse.ArgumentParser()
+parser.add_argument("N_start", type=int, help="start number of the map", default=0)
+parser.add_argument("N_stop", type=int, help="end number of the map", default=0)
 parser.add_argument("--tag", type=str, help="tag of the run", default='')
 parser.add_argument("--path", type=str, help="general path", default='')
 parser.add_argument("--out_dir", type=str, help="output directory", default='')
-parser.add_argument("N_start", type=int, help="start number of the map", default=0)
-parser.add_argument("N_stop", type=int, help="end number of the map", default=0)
 parser.add_argument("--N1h_low", type=float, help="lower normalization for 1-halo term", default=0.1)
 parser.add_argument("--N1h_up", type=float, help="upper normalization for 1-halo term", default=10.0)
 parser.add_argument("--N2h_low", type=float, help="lower normalization for 2-halo term", default=0.1)
 parser.add_argument("--N2h_up", type=float, help="upper normalization for 2-halo term", default=10.0)
-parser.add_argument("--alpha_low", type=float, help="lower power-law index for 2-halo term", default=-1.0)
-parser.add_argument("--alpha_up", type=float, help="upper power-law index for 2-halo term", default=1.0)
+parser.add_argument("--alpha_low", type=float, help="lower power-law index for 2-halo term", default=-2.0)
+parser.add_argument("--alpha_up", type=float, help="upper power-law index for 2-halo term", default=0.0)
+parser.add_argument("--add_noise", action='store_true', help="apply noise term.")
+parser.add_argument("--N_low", type=float, help="lower normalization for noise term", default=0.5)
+parser.add_argument("--N_up", type=float, help="upper normalization for noise term", default=2.0)
+parser.add_argument("--add_beam", action='store_true', help="apply beam function.")
+parser.add_argument("--b_low", type=float, help="lower normalization for beam term", default=1.0)
+parser.add_argument("--b_up", type=float, help="upper normalization for beam term", default=5.0)
 parser.add_argument("--theta_min", type=float, help="theta min (deg)", default=0.01)
 parser.add_argument("--theta_max", type=float, help="theta max (deg)", default=2.0)
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1.0)", default=1.0)
@@ -46,6 +52,12 @@ N2h_low = args.N2h_low
 N2h_up = args.N2h_up
 alpha_low = args.alpha_low
 alpha_up = args.alpha_up
+add_noise = args.add_noise
+N_low = args.N_low
+N_up = args.N_up
+add_beam = args.add_beam
+b_low = args.b_low
+b_up = args.b_up
 theta_min = args.theta_min
 theta_max = args.theta_max
 fact = args.fact
@@ -60,8 +72,8 @@ def normalization(moll_array):
     return moll_array
 
 #power spectrum files; assumed to be normalized with l*(l+1)/(2 Pi)
-in_1halo = 'Cl_radio_2.dat'
-in_2halo = 'Cl_radio_1.dat'
+in_1halo = 'Cl_radio_1.dat'
+in_2halo = 'Cl_radio_2.dat'
 
 ###Geneal options
 #Healpix size
@@ -73,6 +85,7 @@ l_stop = 1500
 x_size = 2000
 y_size = int(x_size/2)
 
+plot_test = False
 ###############################################################
 NPIX = 12*NSIDE**2
 ll = np.arange(l_start,l_stop)
@@ -99,6 +112,11 @@ else:
     text = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N1h, N2h, alpha'+'\n'
     text_cl = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_CCF = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
+
+if add_noise:
+    text = text.replace('\n',', Cl_100, N_lev, N_val\n')
+if add_beam:
+    text = text.replace('\n',', beam_lev, beam_val (deg)\n')
 
 if out_dir is not '' and out_dir[-1] is not '/':
     out_dir = out_dir+'/'
@@ -129,15 +147,28 @@ for i in range(N_start,N_stop+1):
     N1h = np.round(10**random.uniform(np.log10(N1h_low),np.log10(N1h_up)),1)
     N2h = np.round(10**random.uniform(np.log10(N2h_low),np.log10(N2h_up)),1)
     alpha = np.round(random.uniform(alpha_low,alpha_up),1)
-    text = text+'{:.1e}'.format(N1h)+', '+'{:.1e}'.format(N2h)+', '+'{:.1e}'.format(alpha)+'\n'
+    text = text+'{:.1e}'.format(N1h)+', '+'{:.1e}'.format(N2h)+', '+'{:.1e}'.format(alpha)
     print('normalization 1-halo:',N1h)
     print('normalization 2-halo:',N2h)
     print('power-law index:',alpha)
     cl_1h_temp = cl_1h*N1h
     cl_2h_temp = cl_2h*N2h
+    #cl_1h_temp[l_start:] = cl_1h_temp[l_start:]#*(ll/100.)**alpha
     cl_2h_temp[l_start:] = cl_2h_temp[l_start:]*(ll/100.)**alpha
     cl_temp = cl_1h_temp+cl_2h_temp
     cl_list.append(cl_temp)
+    if plot_test:
+        plt.clf()
+        plt.plot(range(len(cl_1h)),cl_1h,'--',linewidth=2,color='orange')
+        plt.plot(range(len(cl_1h)),cl_2h,'.-',linewidth=2,color='orange')
+        plt.plot(range(len(cl_1h)),cl_1h_temp,'--',linewidth=2,color='blue')
+        plt.plot(range(len(cl_1h)),cl_2h_temp,'.-',linewidth=2,color='blue')
+        plt.xlim(xmin=40,xmax=1500)
+        plt.ylim(ymin=1.e-9,ymax=1.e-5)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.savefig('test_PS.png')
+        plt.clf()
 
     print('Writing Power Spectrum...')
     out_cl = out_dir+'Cl_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
@@ -151,6 +182,14 @@ for i in range(N_start,N_stop+1):
     print('Writing CCF...')
     out_CCF = out_dir+'CCF_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
     np.savetxt(out_CCF, np.transpose(CCF_list), header=text_CCF, fmt='%1.4e')
+    if plot_test:
+        plt.plot(th_list,CCF_list[-1],'o-',linewidth=1,color='steelblue')
+        plt.xlim(xmin=theta_min,xmax=theta_max)
+        #plt.ylim(ymin=,ymax=)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.savefig('test_CCF.png')
+        plt.clf()
 
     print('Creating map from Power Spectrum...')
     out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
@@ -159,8 +198,40 @@ for i in range(N_start,N_stop+1):
     print('Saving map...')
     hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
 
+    #moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
+    #plt.savefig('/home/simone/RadioML/data/test/map_clean.png')
+    if add_noise:
+        print('Creating noise from random level...')
+        N = np.round(10**random.uniform(np.log10(N_low),np.log10(N_up)),1)
+        out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_N_'+str(N)+'.fits'
+        print('Noise level:',N)
+        out_name = out_name+'_N_'+str(N)
+        print('Creating noise map...')
+        NN = cl_tot[100]*N
+        print('N:',NN)
+        mnoise = hp.synfast([NN]*len(ll),NSIDE)
+        text = text+', '+'{:.3e}'.format(cl_tot[100])+', '+str(N)+', '+'{:.3e}'.format(NN)
+
+        print('Combining maps...')
+        msim = msim + mnoise
+        print('Saving raw noise map...')
+        #print(path+out_noise)
+        hp.write_map(path+out_noise,mnoise,coord='G',fits_IDL=False)
+
+    if add_beam:
+        b=np.round(10**random.uniform(np.log10(b_low),np.log10(b_up)),1)
+        print('Beam level:',b)
+        out_name = out_name+'_b_'+str(b)
+        print('Convolving with beam...')
+        pix_area = 4*np.pi/NPIX
+        ang = np.sqrt(pix_area)*b
+        print('sigma:',np.degrees(ang))
+        msim = hp.sphtfunc.smoothing(msim,sigma=ang)
+        text= text+', '+str(b)+', '+str(np.round(np.degrees(ang),5))
+
     print('Converting map to tif format...')
     moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
+    #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
     if norm_tif:
         print('Applying normalization to map...')
         moll_array = normalization(moll_array)
@@ -171,6 +242,7 @@ for i in range(N_start,N_stop+1):
     out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_data.tif'
     moll_image.save(out_tif)
 
+    text = text+'\n'
     print('Writing parameters file...')
     f.write(text)
     f.close()
