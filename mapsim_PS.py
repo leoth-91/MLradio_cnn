@@ -104,12 +104,12 @@ for i in range(len(th_list)):
 print('factor for the correlation function:',fact)
 
 if tag is not '':
-    text = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N1h, N2h, alpha'+'\n'
+    text = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N, N1h, N2h, alpha'+'\n'
     text_cl = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_CCF = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     tag = tag+'_'
 else:
-    text = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N1h, N2h, alpha'+'\n'
+    text = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N, N1h, N2h, alpha'+'\n'
     text_cl = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_CCF = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
 
@@ -147,7 +147,7 @@ for i in range(N_start,N_stop+1):
     N1h = np.round(10**random.uniform(np.log10(N1h_low),np.log10(N1h_up)),1)
     N2h = np.round(10**random.uniform(np.log10(N2h_low),np.log10(N2h_up)),1)
     alpha = np.round(random.uniform(alpha_low,alpha_up),1)
-    text = text+'{:.1e}'.format(N1h)+', '+'{:.1e}'.format(N2h)+', '+'{:.1e}'.format(alpha)
+    text = text+'{:}'.format(i)+', '+'{:.1e}'.format(N1h)+', '+'{:.1e}'.format(N2h)+', '+'{:.1e}'.format(alpha)
     print('normalization 1-halo:',N1h)
     print('normalization 2-halo:',N2h)
     print('power-law index:',alpha)
