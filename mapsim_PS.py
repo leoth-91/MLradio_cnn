@@ -248,7 +248,7 @@ for i in range(N_start,N_stop+1):
     f.close()
     sub.call(['cp',out_text_temp,out_text],) #shell=[bool])
 
-    print('Partial time :',time.time()-t_start,'s\n')
+    print('Partial time :',time.time()-t_start,'s')
     print('\n')
 
 t_stop=time.time()
