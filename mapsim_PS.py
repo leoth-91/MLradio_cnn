@@ -30,6 +30,7 @@ parser.add_argument("--N2h_up", type=float, help="upper normalization for 2-halo
 parser.add_argument("--alpha_low", type=float, help="lower power-law index for 2-halo term", default=-2.0)
 parser.add_argument("--alpha_up", type=float, help="upper power-law index for 2-halo term", default=0.0)
 parser.add_argument("--add_noise", action='store_true', help="apply noise term.")
+parser.add_argument("--save_noise", action='store_true', help="save noise map.")
 parser.add_argument("--N_low", type=float, help="lower normalization for noise term", default=0.5)
 parser.add_argument("--N_up", type=float, help="upper normalization for noise term", default=2.0)
 parser.add_argument("--add_beam", action='store_true', help="apply beam function.")
@@ -39,6 +40,7 @@ parser.add_argument("--theta_min", type=float, help="theta min (deg)", default=0
 parser.add_argument("--theta_max", type=float, help="theta max (deg)", default=2.0)
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1.0)", default=1.0)
 parser.add_argument("--norm_tif", action='store_true', help="apply normalization to tif files (values from 0 to 255).")
+parser.add_argument("--reject_clean", action='store_true', help="option if you do not need the clean map (e.g. if NSIDE is large).")
 
 args = parser.parse_args()
 tag = args.tag
@@ -53,6 +55,7 @@ N2h_up = args.N2h_up
 alpha_low = args.alpha_low
 alpha_up = args.alpha_up
 add_noise = args.add_noise
+save_noise = args.save_noise
 N_low = args.N_low
 N_up = args.N_up
 add_beam = args.add_beam
@@ -62,6 +65,7 @@ theta_min = args.theta_min
 theta_max = args.theta_max
 fact = args.fact
 norm_tif = args.norm_tif
+reject_clean = args.reject_clean
 
 if path is not '' and path[-1] is not '/':
     path = path+'/'
@@ -77,12 +81,12 @@ in_2halo = 'Cl_radio_2.dat'
 
 ###Geneal options
 #Healpix size
-NSIDE = 1024
+NSIDE = 4096
 #multipole range
 l_start = 5
 l_stop = 1500
 #size of tif image
-x_size = 2000
+x_size = 20000
 y_size = int(x_size/2)
 
 plot_test = False
@@ -191,32 +195,33 @@ for i in range(N_start,N_stop+1):
         plt.savefig('test_CCF.png')
         plt.clf()
 
-    print('Creating map from Power Spectrum...')
     out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
-    msim = hp.synfast(cl_temp,NSIDE)
-
-    print('Saving map...')
-    hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
+    if not reject_clean:
+        print('Creating clean map from Power Spectrum...')
+        msim = hp.synfast(cl_temp,NSIDE)
+        print('Saving clean map...')
+        hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
 
     #moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
     #plt.savefig('/home/simone/RadioML/data/test/map_clean.png')
     if add_noise:
         print('Creating noise from random level...')
         N = np.round(10**random.uniform(np.log10(N_low),np.log10(N_up)),1)
-        out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_N_'+str(N)+'.fits'
         print('Noise level:',N)
-        out_name = out_name+'_N_'+str(N)
-        print('Creating noise map...')
         NN = cl_tot[100]*N
         print('N:',NN)
-        mnoise = hp.synfast([NN]*len(ll),NSIDE)
+        out_name = out_name+'_N_'+str(N)
         text = text+', '+'{:.3e}'.format(cl_tot[100])+', '+str(N)+', '+'{:.3e}'.format(NN)
 
         print('Combining maps...')
         msim = msim + mnoise
-        print('Saving raw noise map...')
-        #print(path+out_noise)
-        hp.write_map(path+out_noise,mnoise,coord='G',fits_IDL=False)
+        if save_noise:
+            out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_N_'+str(N)+'.fits'
+            print('Creating noise map...')
+            mnoise = hp.synfast([NN]*len(ll),NSIDE)
+            print('Saving noise map...')
+            #print(path+out_noise)
+            hp.write_map(path+out_noise,mnoise,coord='G',fits_IDL=False)
 
     if add_beam:
         b=np.round(10**random.uniform(np.log10(b_low),np.log10(b_up)),1)
@@ -232,6 +237,7 @@ for i in range(N_start,N_stop+1):
     print('Converting map to tif format...')
     moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
     #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
+
     if norm_tif:
         print('Applying normalization to map...')
         moll_array = normalization(moll_array)
