@@ -86,6 +86,17 @@ l_stop = 1500
 x_size = 2000
 y_size = int(x_size/2)
 
+angular_coverage = 360 # that is: the 2000 x-pixels cover 360 deg (and 1000 y-pixels cover 180 deg)
+# one degree covers 2000/360 = 5.55 pixels
+pixel_size = x_size / angular_coverage 
+
+# the beam covers 1x1 deg^2 and has a resolution of 4608x4608 pixels
+beam_size = 1 # deg
+beam_resolution = beam_size * pixel_size
+# later the beam will be reized to to this physical resolution
+
+
+
 plot_test = False
 ###############################################################
 NPIX = 12*NSIDE**2
@@ -245,10 +256,15 @@ for i in range(N_start,N_stop+1):
                 beam_data = hdul[0].data
 
             beam_data = beam_data[0][0][:][:]
-            if small_beam:
-                # this takes only a little patch of the beam to have the code run quicker!
-                num = 2288
-                beam_data = beam_data[num:-num, num:-num]
+
+            # adjusting resolution to physical pixel size:
+            # beam needs to have a resolution of beam_resolution x beam_resolution
+            from PIL import Image
+            beam_im = Image.fromarray(beam_data)
+            beam_im = beam_im.resize((beam_resolution, beam_resolution))
+            beam_data = np.array(beam_im)
+
+
             beam_data = beam_data[np.newaxis,:,:]
             if k==0:
                 beams = beam_data
