@@ -259,7 +259,6 @@ for i in range(N_start,N_stop+1):
 
             # adjusting resolution to physical pixel size:
             # beam needs to have a resolution of beam_resolution x beam_resolution
-            from PIL import Image
             beam_im = Image.fromarray(beam_data)
             beam_im = beam_im.resize((beam_resolution, beam_resolution))
             beam_data = np.array(beam_im)
