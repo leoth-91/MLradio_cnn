@@ -4,8 +4,8 @@
 #
 import healpy as hp
 from healpy.visufunc import cartview
-import matplotlib as mpl
-mpl.use('Agg')
+#import matplotlib as mpl
+#mpl.use('Agg')
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
@@ -16,6 +16,9 @@ import os.path
 import subprocess as sub
 import argparse
 from PIL import Image
+import glob
+from astropy.io import fits
+from astropy.utils.data import get_pkg_data_filename
 
 parser = argparse.ArgumentParser()
 parser.add_argument("N_start", type=int, help="start number of the map", default=0)
@@ -33,9 +36,11 @@ parser.add_argument("--add_noise", action='store_true', help="apply noise term."
 parser.add_argument("--save_noise", action='store_true', help="save noise map.")
 parser.add_argument("--N_low", type=float, help="lower normalization for noise term", default=0.5)
 parser.add_argument("--N_up", type=float, help="upper normalization for noise term", default=2.0)
-parser.add_argument("--add_beam", action='store_true', help="apply beam function.")
-parser.add_argument("--b_low", type=float, help="lower normalization for beam term", default=1.0)
-parser.add_argument("--b_up", type=float, help="upper normalization for beam term", default=5.0)
+parser.add_argument("--add_beam", action='store_true', help="apply beam function from file(s).")
+parser.add_argument("--beam_path", type=str, help="beam folder path", default='')
+parser.add_argument("--add_gauss_beam", action='store_true', help="apply gaussian beam with healpy function function.")
+parser.add_argument("--b_low", type=float, help="lower normalization for gaussian beam term", default=1.0)
+parser.add_argument("--b_up", type=float, help="upper normalization for gaussian beam term", default=5.0)
 parser.add_argument("--theta_min", type=float, help="theta min (deg)", default=0.01)
 parser.add_argument("--theta_max", type=float, help="theta max (deg)", default=2.0)
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1.0)", default=1.0)
@@ -59,6 +64,8 @@ save_noise = args.save_noise
 N_low = args.N_low
 N_up = args.N_up
 add_beam = args.add_beam
+beam_path = args.beam_path
+add_gauss_beam = args.add_gauss_beam
 b_low = args.b_low
 b_up = args.b_up
 theta_min = args.theta_min
@@ -66,6 +73,10 @@ theta_max = args.theta_max
 fact = args.fact
 norm_tif = args.norm_tif
 reject_clean = args.reject_clean
+
+if add_beam and add_gauss_beam:
+    print('ERROR: Choose one type of beam.')
+    exit(-1)
 
 if path is not '' and path[-1] is not '/':
     path = path+'/'
@@ -75,18 +86,22 @@ def normalization(moll_array):
     moll_array = moll_array/(np.max(moll_array))*255.0
     return moll_array
 
+def rebin(a, shape):
+    sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
+    return a.reshape(sh).mean(-1).mean(1)
+
 #power spectrum files; assumed to be normalized with l*(l+1)/(2 Pi)
 in_1halo = 'Cl_radio_1.dat'
 in_2halo = 'Cl_radio_2.dat'
 
 ###Geneal options
 #Healpix size
-NSIDE = 4096
+NSIDE = 1024
 #multipole range
 l_start = 5
 l_stop = 1500
 #size of tif image
-x_size = 20000
+x_size = 750
 y_size = int(x_size/2)
 
 plot_test = False
@@ -196,9 +211,9 @@ for i in range(N_start,N_stop+1):
         plt.clf()
 
     out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
+    print('Creating clean map from Power Spectrum...')
+    msim = hp.synfast(cl_temp,NSIDE)
     if not reject_clean:
-        print('Creating clean map from Power Spectrum...')
-        msim = hp.synfast(cl_temp,NSIDE)
         print('Saving clean map...')
         hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
 
@@ -213,8 +228,9 @@ for i in range(N_start,N_stop+1):
         out_name = out_name+'_N_'+str(N)
         text = text+', '+'{:.3e}'.format(cl_tot[100])+', '+str(N)+', '+'{:.3e}'.format(NN)
 
-        print('Combining maps...')
-        msim = msim + mnoise
+        #if not reject_clean:
+        #    print('Combining maps...')
+        #    msim = msim + mnoise
         if save_noise:
             out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_N_'+str(N)+'.fits'
             print('Creating noise map...')
@@ -223,7 +239,7 @@ for i in range(N_start,N_stop+1):
             #print(path+out_noise)
             hp.write_map(path+out_noise,mnoise,coord='G',fits_IDL=False)
 
-    if add_beam:
+    if add_gauss_beam:
         b=np.round(10**random.uniform(np.log10(b_low),np.log10(b_up)),1)
         print('Beam level:',b)
         out_name = out_name+'_b_'+str(b)
@@ -234,19 +250,73 @@ for i in range(N_start,N_stop+1):
         msim = hp.sphtfunc.smoothing(msim,sigma=ang)
         text= text+', '+str(b)+', '+str(np.round(np.degrees(ang),5))
 
-    print('Converting map to tif format...')
+    print('Converting map to cartesian projection...')
     moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
     #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
 
-    if norm_tif:
-        print('Applying normalization to map...')
-        moll_array = normalization(moll_array)
-    #moll_array = np.array(moll_array, dtype=np.uint8)
-    moll_image = Image.fromarray(moll_array)
+    if add_beam:
+        beams = []
+        # get all beam files from beam_path with '*.fits'
+        beam_ids = glob.glob(beam_path + '*.fits')
+        print(beam_ids)
+        # loading the fits-files and stacking them together
+        for k, beam_id in enumerate(beam_ids):
+            with fits.open(beam_id) as hdul:
+                beam_data = hdul[0].data
 
-    print('Saving tif map...')
-    out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_data.tif'
-    moll_image.save(out_tif)
+            beam_data = beam_data[0][0][:][:]
+            #if small_beam:
+            #    # this takes only a little patch of the beam to have the code run quicker!
+            #    num = 2288
+            #    beam_data = beam_data[num:-num, num:-num]
+            #beam_data = beam_data[np.newaxis,:,:]
+
+            shape = (500,500)
+            if beam_data.shape is not shape:
+                print('Rebinning beam array...')
+                xdiv = beam_data.shape[0]//shape[0]
+                ydiv = beam_data.shape[1]//shape[1]
+                xx = (int(shape[0]*(xdiv+1))-beam_data.shape[0])//2
+                yy = (int(shape[1]*(ydiv+1))-beam_data.shape[1])//2
+                pad = np.zeros((xx,beam_data.shape[1]))
+                beam_data = np.concatenate((beam_data,pad),axis=0)
+                beam_data = np.concatenate((pad,beam_data),axis=0)
+                pad = np.zeros((beam_data.shape[0],yy))
+                beam_data = np.concatenate((beam_data,pad),axis=1)
+                beam_data = np.concatenate((pad,beam_data),axis=1)
+                beam_data = rebin(beam_data,shape)
+
+            beams.append(beam_data)
+        # beams shape = (#beam, pixel-x, pixel-y)
+
+        # convolve moll_array with each beam
+        print('Convolving with beams...')
+        for k in range(len(beams)):
+            from scipy import signal
+            moll_array = signal.convolve2d(moll_array, beams[k], boundary='symm', mode='same')
+        # save it with tag for inclination in it
+            if norm_tif:
+                print('Applying normalization to map...')
+                moll_array = normalization(moll_array)
+            #moll_array = np.array(moll_array, dtype=np.uint8)
+            moll_image = Image.fromarray(moll_array)
+
+            print('Saving tif map...')
+            declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
+            out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
+            moll_image.save(out_tif)
+
+    else: #the map is saved once
+        if norm_tif:
+            print('Applying normalization to map...')
+            moll_array = normalization(moll_array)
+            #moll_array = np.array(moll_array, dtype=np.uint8)
+        print('Converting map to tif format...')
+        moll_image = Image.fromarray(moll_array)
+
+        print('Saving tif map...')
+        out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_data.tif'
+        moll_image.save(out_tif)
 
     text = text+'\n'
     print('Writing parameters file...')
