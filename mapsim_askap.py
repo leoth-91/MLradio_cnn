@@ -92,7 +92,7 @@ pixel_size = x_size / angular_coverage
 
 # the beam covers 1x1 deg^2 and has a resolution of 4608x4608 pixels
 beam_size = 1 # deg
-beam_resolution = beam_size * pixel_size
+beam_resolution = int(beam_size * pixel_size)
 # later the beam will be reized to to this physical resolution
 
 
