@@ -46,6 +46,8 @@ parser.add_argument("--theta_max", type=float, help="theta max (deg)", default=2
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1.0)", default=1.0)
 parser.add_argument("--norm_tif", action='store_true', help="apply normalization to tif files (values from 0 to 255).")
 parser.add_argument("--reject_clean", action='store_true', help="option if you do not need the clean map (e.g. if NSIDE is large).")
+parser.add_argument("--show_map", action='store_true', help="show maps and projections.")
+parser.add_argument("--patch_GAL", type=int, help="select a square along the Galactic plane of desired size.", default=None)
 
 args = parser.parse_args()
 tag = args.tag
@@ -73,6 +75,8 @@ theta_max = args.theta_max
 fact = args.fact
 norm_tif = args.norm_tif
 reject_clean = args.reject_clean
+show_map = args.show_map
+patch_GAL = args.patch_GAL
 
 if add_beam and add_gauss_beam:
     print('ERROR: Choose one type of beam.')
@@ -96,12 +100,12 @@ in_2halo = 'Cl_radio_2.dat'
 
 ###Geneal options
 #Healpix size
-NSIDE = 1024
+NSIDE = 4096
 #multipole range
 l_start = 5
 l_stop = 1500
 #size of tif image
-x_size = 750
+x_size = 20000
 y_size = int(x_size/2)
 
 plot_test = False
@@ -213,6 +217,9 @@ for i in range(N_start,N_stop+1):
     out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
     print('Creating clean map from Power Spectrum...')
     msim = hp.synfast(cl_temp,NSIDE)
+    if show_map:
+        hp.mollview(msim)
+        plt.show()
     if not reject_clean:
         print('Saving clean map...')
         hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
@@ -252,7 +259,20 @@ for i in range(N_start,N_stop+1):
 
     print('Converting map to cartesian projection...')
     moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
+    if show_map:
+        plt.show()
     #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
+    if patch_GAL is not None:
+        x_start = np.random.randint(0,high=(x_size-patch_GAL))
+        y_del = (y_size-patch_GAL)//2
+        moll_array = np.delete(moll_array,np.arange(y_size-y_del,y_size,dtype=int),axis=0)
+        moll_array = np.delete(moll_array,np.arange(0,y_del,dtype=int),axis=0)
+        moll_array = moll_array[:,x_start:x_start+patch_GAL]
+        print('Shape patch:')
+        print(np.shape(moll_array))
+        if show_map:
+            plt.imshow(moll_array)
+            plt.show()
 
     if add_beam:
         beams = []
@@ -271,7 +291,7 @@ for i in range(N_start,N_stop+1):
             #    beam_data = beam_data[num:-num, num:-num]
             #beam_data = beam_data[np.newaxis,:,:]
 
-            shape = (500,500)
+            shape = (200,200)
             if beam_data.shape is not shape:
                 print('Rebinning beam array...')
                 xdiv = beam_data.shape[0]//shape[0]
@@ -293,18 +313,20 @@ for i in range(N_start,N_stop+1):
         print('Convolving with beams...')
         for k in range(len(beams)):
             from scipy import signal
-            moll_array = signal.convolve2d(moll_array, beams[k], boundary='symm', mode='same')
-        # save it with tag for inclination in it
+            moll_array_conv = signal.convolve2d(moll_array, beams[k], boundary='symm', mode='same')
+            if show_map:
+                plt.imshow(moll_array_conv)
+                plt.show()
+
             if norm_tif:
                 print('Applying normalization to map...')
-                moll_array = normalization(moll_array)
-            #moll_array = np.array(moll_array, dtype=np.uint8)
-            moll_image = Image.fromarray(moll_array)
-
+                moll_array_conv = normalization(moll_array_conv)
+            moll_image_conv = Image.fromarray(moll_array_conv)
+            # save it with tag for inclination in it
             print('Saving tif map...')
             declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
             out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
-            moll_image.save(out_tif)
+            moll_image_conv.save(out_tif)
 
     else: #the map is saved once
         if norm_tif:
