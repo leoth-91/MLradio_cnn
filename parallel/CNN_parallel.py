@@ -19,19 +19,14 @@ parser.add_argument("--tag_res", type=str, help="tag of the network results", de
 parser.add_argument("--path", type=str, help="general path of CNN and test results", default='')
 parser.add_argument("--path_TD", type=str, help="path of training data (.tif files)", default='')
 parser.add_argument("--path_TL", type=str, help="path of training label (correlation function)", default='')
+parser.add_argument("--path_config", type=str, help="path to config.txt", default='')
 parser.add_argument("--N_start", type=int, help="start number of the maps", default=0)
 parser.add_argument("--N_stop", type=int, help="end number of the maps", default=0)
 parser.add_argument("--N_split", type=int, help="index for splitting thetas (default = 5)", default=5)
 parser.add_argument("--max_ID", type=int, help="maximum number of maps", default=-1)
-parser.add_argument("--N_epochs_small", type=int, help="number of epochs (default = 10)", default=10)
-parser.add_argument("--N_epochs_large", type=int, help="number of epochs (default = 10)", default=10)
-parser.add_argument("--LR_small", type=float, help="learning rate small scale", default=1.e-5)
-parser.add_argument("--LR_large", type=float, help="learning rate large scale", default=1.e-5)
-parser.add_argument("--batch_size_small", type=int, help="batch_size (default = 10)", default=10)
-parser.add_argument("--batch_size_large", type=int, help="batch_size (default = 10)", default=10)
+
 parser.add_argument("--kernel_size", type=tuple, help="kernel_size (default = 5)", default=((5,5),(5,5),(5,5)))
 parser.add_argument("--pool_size", type=tuple, help="pool_size (default = 2)", default=((2,2),(2,2),(2,2)))
-parser.add_argument("--stride", type=int, help="stride (default = 1)", default=1)
 parser.add_argument("--pool", action='store_true', help="switch on pooling")
 parser.add_argument("--train", action='store_true', help="train the CNN")
 parser.add_argument("--refined", action='store_true', help="using different kernel size for each layer")
@@ -46,6 +41,7 @@ path = args.path
 
 path_train_data = args.path_TD
 path_train_label = args.path_TL
+path_config = args.path_config
 
 path_train_data_small = path_train_data
 path_train_data_large = path_train_data
@@ -57,8 +53,7 @@ N_start = args.N_start
 N_stop = args.N_stop
 N_split = args.N_split #starting theta
 train = args.train
-LR_small = args.LR_small
-LR_large = args.LR_large
+
 norm_label = args.norm_label
 norm_data = args.norm_data
 max_ID = args.max_ID
@@ -90,33 +85,12 @@ path_model = path+'saved_model/'
 path_results_small = path+'results_small/'
 path_results_large = path+'results_large/'
 
-##########################################################
-## Parameters ############################################
-N_epochs_small = args.N_epochs_small
-N_epochs_large = args.N_epochs_large
-batch_size_small = args.batch_size_small
-batch_size_large = args.batch_size_large
 
-KS = args.kernel_size
-PS = args.pool_size
-stride = args.stride
-pool = args.pool
+import yaml
+with open(path_config+'config.yaml') as file:
+    config_params = yaml.load(file, Loader=yaml.FullLoader)
 
-#NOTE: we can improve by separating KS_small and KS_large
-model_parameters_small = {'learning_rate': LR_small,      # 1E-5
-                       'decay_rate': LR_small,      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
-                      'kernel_size': KS,
-                        'pool_size': PS,
-                           'stride': (1,1,1),
-                         'pooling' : pool
-                    }
-model_parameters_large = {'learning_rate': LR_large,      # 1E-5
-                       'decay_rate': LR_large,      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
-                      'kernel_size': KS,
-                        'pool_size': PS,
-                           'stride': (1,1,1),
-                         'pooling' : pool
-                    }
+
 ##########################################################
 ##########################################################
 def emptyDirectory(thePath):
@@ -273,12 +247,12 @@ data_shape_large = (n_x_large, n_y_large, n_channels_large)
 generator_parameters_small = {'path_data': path_train_data_small,
               'dim': (n_x_small, n_y_small),
               'N_out': N_out_small,
-              'batch_size': batch_size_small,
+              'batch_size': config_params['batch-size-small'],
               'norm': norm_data}
 generator_parameters_large = {'path_data': path_train_data_large,
               'dim': (n_x_large, n_y_large),
               'N_out': N_out_large,
-              'batch_size': batch_size_large,
+              'batch_size': config_params['batch-size-large'],
               'norm': norm_data}
 
 
@@ -297,8 +271,31 @@ training_generator_large   = image_provider.DataGenerator(partition_large['train
 validation_generator_large = image_provider.DataGenerator(partition_large['validation'], labels_large, shuffle=True, **generator_parameters_large)
 test_generator_large = image_provider.DataGenerator(partition_large['test'], labels_large, shuffle=False, **generator_parameters_large)
 
+
+##########################################################
+## Parameters ############################################
+
+model_parameters_small = {'filters': config_params['filters-small'],
+                    'learning_rate': config_params['learning-rate-small'],      # 1E-5
+                       'decay_rate': config_params['decay-rate-small'],      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
+                      'kernel_size': config_params['kernel-sizes-small'],
+                        'pool_size': config_params['pooling-sizes-small'],
+                     'pooling_type': config_params['pooling-type-small'],
+                          'dropout': config_params['drop-out-rate-small']
+                    }
+model_parameters_large = {'filters': config_params['filters-large'],
+                    'learning_rate': config_params['learning-rate-large'],      # 1E-5
+                       'decay_rate': config_params['decay-rate-large'],      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
+                      'kernel_size': config_params['kernel-sizes-large'],
+                        'pool_size': config_params['pooling-sizes-large'],
+                     'pooling_type': config_params['pooling-type-large'],
+                          'dropout': config_params['drop-out-rate-large']
+                         }
+
+
 ##########################################################
 ## Model and training on small ###########################
+
 
 # Defining the learning model
 print('Initializing model for small scales...')
@@ -312,7 +309,7 @@ if train==True:
     time_start = time.time()
     fit_parameters_small = {'generator': training_generator_small,
                       'validation_data': validation_generator_small,
-                      'epochs': N_epochs_small}
+                      'epochs': config_params['epochs-small']}
     print(fit_parameters_small)
     # training the model
     history_small = model_small.fit_generator(**fit_parameters_small)
@@ -355,7 +352,7 @@ if train==True:
     time_start = time.time()
     fit_parameters_large = {'generator': training_generator_large,
                       'validation_data': validation_generator_large,
-                      'epochs': N_epochs_large}
+                      'epochs': config_params['epochs-small']}
     # training the model
     history_large = model_large.fit_generator(**fit_parameters_large)
 
@@ -391,6 +388,8 @@ print('Running prediction for small scales:')
 pred_small = model_small.predict_generator(test_generator_small, verbose=1)
 target_small = np.asarray([*test_generator_small.labels.values()])[num2_small:]     # the * unpacks the dictionary_values-type
 
+batch_size_small = config_params['batch-size-small']
+
 for k in range(target_small.shape[0]-target_small.shape[0]%batch_size_small):
     # printing the outputs
     with open(path_results_small+'2-PCF_map_'+str(k).zfill(5)+tag_res+'_small.txt','w') as stats_small:
@@ -413,6 +412,8 @@ print('Running prediction for large scales:')
 pred_large = model_large.predict_generator(test_generator_large, verbose=1)
 target_large = np.asarray([*test_generator_large.labels.values()])[num2_large:]     # the * unpacks the dictionary_values-type
 
+batch_size_large = config_params['batch-size-large']
+
 for k in range(target_large.shape[0]-target_large.shape[0]%batch_size_large):
     # printing the outputs
     with open(path_results_large+'2-PCF_map_'+str(k).zfill(5)+tag_res+'_large.txt','w') as stats_large:
@@ -427,4 +428,79 @@ for k in range(target_large.shape[0]-target_large.shape[0]%batch_size_large):
     stats_large.close()
 
 
+
+##########################################################
+## Output file for the configurations ####################
+
+if os.path.exists(path+'config-log-small.txt'):
+    with open(path+'config-log-small.txt','a') as configLog_small:
+        configLog_small.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-small'],
+                                                                            config_params['batch-size-small'],
+                                                                            config_params['learning-rate-small'], 
+                                                                            config_params['decay-rate-small'], 
+                                                                            config_params['filters-small'], 
+                                                                            config_params['kernel-sizes-small'], 
+                                                                            config_params['pooling-sizes-small'], 
+                                                                            config_params['pooling-type-small'],
+                                                                            config_params['drop-out-rate-small']))
+else:
+    with open(path+'config-log-small.txt','w') as configLog_small:
+        configLog_small.write('# Small scale\n')
+        configLog_small.write('#epochs batch     lr     dr       filters       kernel-sizes               pooling sizes              pooling type  dropout-rate          rating\n')
+    with open(path+'config-log-small.txt','a') as configLog_small:
+        configLog_small.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-small'],
+                                                                            config_params['batch-size-small'],
+                                                                            config_params['learning-rate-small'], 
+                                                                            config_params['decay-rate-small'], 
+                                                                            config_params['filters-small'], 
+                                                                            config_params['kernel-sizes-small'], 
+                                                                            config_params['pooling-sizes-small'], 
+                                                                            config_params['pooling-type-small'],
+                                                                            config_params['drop-out-rate-small']))
+
+if os.path.exists(path+'config-log-large.txt'):
+    with open(path+'config-log-large.txt','a') as configLog_large:
+        configLog_large.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-large'],
+                                                                            config_params['batch-size-large'],
+                                                                            config_params['learning-rate-large'], 
+                                                                            config_params['decay-rate-large'], 
+                                                                            config_params['filters-large'], 
+                                                                            config_params['kernel-sizes-large'], 
+                                                                            config_params['pooling-sizes-large'], 
+                                                                            config_params['pooling-type-large'],
+                                                                            config_params['drop-out-rate-large']))
+else:
+    with open(path+'config-log-large.txt','w') as configLog_large:
+        configLog_large.write('# Large scale\n')
+        configLog_large.write('#epochs batch     lr     dr       filters       kernel-sizes               pooling sizes              pooling type  dropout-rate          rating\n')
+    with open(path+'config-log-large.txt','a') as configLog_large:
+        configLog_large.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-large'],
+                                                                            config_params['batch-size-large'],
+                                                                            config_params['learning-rate-large'], 
+                                                                            config_params['decay-rate-large'], 
+                                                                            config_params['filters-large'], 
+                                                                            config_params['kernel-sizes-large'], 
+                                                                            config_params['pooling-sizes-large'], 
+                                                                            config_params['pooling-type-large'],
+                                                                            config_params['drop-out-rate-large']))
+
+
+
+
+
 print('Done.')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

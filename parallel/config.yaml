@@ -1,0 +1,37 @@
+##############################
+# small-scale network
+epochs-small        : 1
+batch-size-small    : 10
+learning-rate-small : 0.00001
+# YML interprets '1E-5' as string...
+decay-rate-small    : 0.00001
+filters-small       : [64,32,8]
+kernel-sizes-small  :
+  - [3,3]
+  - [5,5]
+  - [7,7]
+pooling-sizes-small : 
+  - [3,3]
+  - [3,3] 
+  - [3,3]
+pooling-type-small  : avg       # 'avg' or 'max' everything else defaults to 'max'
+drop-out-rate-small : 0.0       # '0.2' -> 20% of neurons are dropped out etc.
+
+##############################
+# large-scale network
+epochs-large        : 1
+batch-size-large    : 10
+learning-rate-large : 0.00001
+decay-rate-large    : 0.00001
+filters-large       : [64,32,8]
+kernel-sizes-large  :
+  - [3,3]
+  - [5,5]
+  - [7,7]
+pooling-sizes-large : 
+  - [3,3]
+  - [3,3] 
+  - [3,3]
+pooling-type-large  : avg      
+drop-out-rate-large : 0.0
+
