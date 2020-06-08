@@ -276,16 +276,16 @@ test_generator_large = image_provider.DataGenerator(partition_large['test'], lab
 ## Parameters ############################################
 
 model_parameters_small = {'filters': config_params['filters-small'],
-                    'learning_rate': config_params['learning-rate-small'],      # 1E-5
-                       'decay_rate': config_params['decay-rate-small'],      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
+                    'learning_rate': float(config_params['learning-rate-small']),      # 1E-5
+                       'decay_rate': float(config_params['decay-rate-small']),      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
                       'kernel_size': config_params['kernel-sizes-small'],
                         'pool_size': config_params['pooling-sizes-small'],
                      'pooling_type': config_params['pooling-type-small'],
                           'dropout': config_params['drop-out-rate-small']
                     }
 model_parameters_large = {'filters': config_params['filters-large'],
-                    'learning_rate': config_params['learning-rate-large'],      # 1E-5
-                       'decay_rate': config_params['decay-rate-large'],      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
+                    'learning_rate': float(config_params['learning-rate-large']),      # 1E-5
+                       'decay_rate': float(config_params['decay-rate-large']),      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
                       'kernel_size': config_params['kernel-sizes-large'],
                         'pool_size': config_params['pooling-sizes-large'],
                      'pooling_type': config_params['pooling-type-large'],
