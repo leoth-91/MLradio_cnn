@@ -1,11 +1,10 @@
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Conv2D, Flatten, Input, MaxPooling2D, AveragePooling2D
+from tensorflow.keras.layers import Dense, Conv2D, Flatten, Input, MaxPooling2D, AveragePooling2D, Dropout
 from tensorflow.keras import optimizers
 from tensorflow.keras import losses
 from tensorflow.keras import activations
 from tensorflow.keras import initializers
 
-from keras.layers import Dropout
 
 
 
@@ -35,7 +34,7 @@ def CNN(N_output=10, filters=(64,32,8), data_shape=(32,32,1), learning_rate=1E-4
         layer_3 = MaxPooling2D(pool_size=pool_size[2], padding=padding)(layer_3)
 
     layer_f = Flatten()(layer_3)
-    # layer_drop = Dropout(rate=dropout)(layer_f)
+    layer_f = Dropout(rate=dropout)(layer_f)
     layer_d = Dense(units=N_output, activation=act)(layer_f)
 
     model = Model(input_img, layer_d)
@@ -43,10 +42,5 @@ def CNN(N_output=10, filters=(64,32,8), data_shape=(32,32,1), learning_rate=1E-4
 
     model.compile(loss=losses.mean_squared_error, optimizer=adam, metrics=['accuracy'])
     return model
-
-
-
-
-
 
 
