@@ -276,16 +276,16 @@ test_generator_large = image_provider.DataGenerator(partition_large['test'], lab
 ## Parameters ############################################
 
 model_parameters_small = {'filters': config_params['filters-small'],
-                    'learning_rate': float(config_params['learning-rate-small']),      # 1E-5
-                       'decay_rate': float(config_params['decay-rate-small']),      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
+                    'learning_rate': config_params['learning-rate-small'],      # 1E-5
+                       'decay_rate': config_params['decay-rate-small'],      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
                       'kernel_size': config_params['kernel-sizes-small'],
                         'pool_size': config_params['pooling-sizes-small'],
                      'pooling_type': config_params['pooling-type-small'],
                           'dropout': config_params['drop-out-rate-small']
                     }
 model_parameters_large = {'filters': config_params['filters-large'],
-                    'learning_rate': float(config_params['learning-rate-large']),      # 1E-5
-                       'decay_rate': float(config_params['decay-rate-large']),      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
+                    'learning_rate': config_params['learning-rate-large'],      # 1E-5
+                       'decay_rate': config_params['decay-rate-large'],      # 1E-5 # i.e. lr /= (1+decay_rate) after each epoch
                       'kernel_size': config_params['kernel-sizes-large'],
                         'pool_size': config_params['pooling-sizes-large'],
                      'pooling_type': config_params['pooling-type-large'],
@@ -320,6 +320,7 @@ if train==True:
     # Creating a file to store the loss function:
     epochs_small = np.array(range(1,1+N_epochs_small))
     loss_values_small = history_small.history['loss']
+    acc_values_small = history_small.history['accuracy']
 
     #emptyDirectory(path_results)
 
@@ -336,6 +337,7 @@ else:
     model_small = load_model(path_model+'model'+tag_res+'_small.h5')
     model_small.load_weights(path_model+'weights'+tag_res+'_small.csv')
     print(model_small.summary())
+    acc_values_small = '?'
 
 ##########################################################
 ## Model and training on large ###########################
@@ -362,6 +364,7 @@ if train==True:
     # Creating a file to store the loss function:
     epochs_large = np.array(range(1,1+N_epochs_large))
     loss_values_large = history_large.history['loss']
+    acc_values_large = history_large.history['accuracy']
 
     #emptyDirectory(path_results)
 
@@ -378,6 +381,7 @@ else:
     model_large = load_model(path_model+'model'+tag_res+'_large.h5')
     model_large.load_weights(path_model+'weights'+tag_res+'_large.csv')
     print(model_large.summary())
+    acc_values_large = '?'
 
 
 ## Testing ###########################################
@@ -434,7 +438,7 @@ for k in range(target_large.shape[0]-target_large.shape[0]%batch_size_large):
 
 if os.path.exists(path+'config-log-small.txt'):
     with open(path+'config-log-small.txt','a') as configLog_small:
-        configLog_small.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-small'],
+        configLog_small.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}            {:}\n'.format(config_params['epochs-small'],
                                                                             config_params['batch-size-small'],
                                                                             config_params['learning-rate-small'], 
                                                                             config_params['decay-rate-small'], 
@@ -442,13 +446,14 @@ if os.path.exists(path+'config-log-small.txt'):
                                                                             config_params['kernel-sizes-small'], 
                                                                             config_params['pooling-sizes-small'], 
                                                                             config_params['pooling-type-small'],
-                                                                            config_params['drop-out-rate-small']))
+                                                                            config_params['drop-out-rate-small'],
+                                                                            acc_values_small))
 else:
     with open(path+'config-log-small.txt','w') as configLog_small:
         configLog_small.write('# Small scale\n')
-        configLog_small.write('#epochs batch     lr     dr       filters       kernel-sizes               pooling sizes              pooling type  dropout-rate          rating\n')
+        configLog_small.write('#epochs batch     lr     dr       filters       kernel-sizes               pooling sizes              pooling type  dropout-rate    accuracy     rating\n')
     with open(path+'config-log-small.txt','a') as configLog_small:
-        configLog_small.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-small'],
+        configLog_small.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}            {:}\n'.format(config_params['epochs-small'],
                                                                             config_params['batch-size-small'],
                                                                             config_params['learning-rate-small'], 
                                                                             config_params['decay-rate-small'], 
@@ -456,11 +461,12 @@ else:
                                                                             config_params['kernel-sizes-small'], 
                                                                             config_params['pooling-sizes-small'], 
                                                                             config_params['pooling-type-small'],
-                                                                            config_params['drop-out-rate-small']))
+                                                                            config_params['drop-out-rate-small'],
+                                                                            acc_values_small))
 
 if os.path.exists(path+'config-log-large.txt'):
     with open(path+'config-log-large.txt','a') as configLog_large:
-        configLog_large.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-large'],
+        configLog_large.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}            {:}\n'.format(config_params['epochs-large'],
                                                                             config_params['batch-size-large'],
                                                                             config_params['learning-rate-large'], 
                                                                             config_params['decay-rate-large'], 
@@ -468,13 +474,14 @@ if os.path.exists(path+'config-log-large.txt'):
                                                                             config_params['kernel-sizes-large'], 
                                                                             config_params['pooling-sizes-large'], 
                                                                             config_params['pooling-type-large'],
-                                                                            config_params['drop-out-rate-large']))
+                                                                            config_params['drop-out-rate-large'],
+                                                                            acc_values_large))
 else:
     with open(path+'config-log-large.txt','w') as configLog_large:
         configLog_large.write('# Large scale\n')
-        configLog_large.write('#epochs batch     lr     dr       filters       kernel-sizes               pooling sizes              pooling type  dropout-rate          rating\n')
+        configLog_large.write('#epochs batch     lr     dr       filters       kernel-sizes               pooling sizes              pooling type  dropout-rate    accuracy     rating\n')
     with open(path+'config-log-large.txt','a') as configLog_large:
-        configLog_large.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}\n'.format(config_params['epochs-large'],
+        configLog_large.write('{:}       {:}        {:}  {:}    {:}   {:}   {:}   {:}           {:}            {:}\n'.format(config_params['epochs-large'],
                                                                             config_params['batch-size-large'],
                                                                             config_params['learning-rate-large'], 
                                                                             config_params['decay-rate-large'], 
@@ -482,7 +489,8 @@ else:
                                                                             config_params['kernel-sizes-large'], 
                                                                             config_params['pooling-sizes-large'], 
                                                                             config_params['pooling-type-large'],
-                                                                            config_params['drop-out-rate-large']))
+                                                                            config_params['drop-out-rate-large'],
+                                                                            acc_values_large))
 
 
 
