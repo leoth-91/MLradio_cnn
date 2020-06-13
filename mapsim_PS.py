@@ -8,7 +8,8 @@ from healpy.visufunc import cartview
 #mpl.use('Agg')
 from matplotlib import pyplot as plt
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d#,interp2d
+#from scipy.integrate import nquad
 from scipy.special import eval_legendre as leg
 import time
 import random
@@ -33,20 +34,28 @@ parser.add_argument("--N2h_up", type=float, help="upper normalization for 2-halo
 parser.add_argument("--alpha_low", type=float, help="lower power-law index for 2-halo term", default=-2.0)
 parser.add_argument("--alpha_up", type=float, help="upper power-law index for 2-halo term", default=0.0)
 parser.add_argument("--add_noise", action='store_true', help="apply noise term.")
+parser.add_argument("--pivot_noise", type=int, help="multipole for pivot noise level", default=100)
 parser.add_argument("--save_noise", action='store_true', help="save noise map.")
 parser.add_argument("--N_low", type=float, help="lower normalization for noise term", default=0.5)
 parser.add_argument("--N_up", type=float, help="upper normalization for noise term", default=2.0)
-parser.add_argument("--add_beam", action='store_true', help="apply beam function from file(s).")
+parser.add_argument("--add_beam", action='store_true', help="apply beam function from file(s)")
+parser.add_argument("--beam_shape", type=tuple, help="the beam will be downgraded to this shape", default=None)
+parser.add_argument("--beam_size", type=float, help="the beam will be downgraded to this resolution (arcsec)", default=None)
+parser.add_argument("--filter", type=int, help="set the beam filter size", default=50)
+parser.add_argument("--random_beam", action='store_true', help="the beam for convolution is selected randomly from the list")
+parser.add_argument("--save_beam", action='store_true', help="save new beam filter")
 parser.add_argument("--beam_path", type=str, help="beam folder path", default='')
 parser.add_argument("--add_gauss_beam", action='store_true', help="apply gaussian beam with healpy function function.")
 parser.add_argument("--b_low", type=float, help="lower normalization for gaussian beam term", default=1.0)
 parser.add_argument("--b_up", type=float, help="upper normalization for gaussian beam term", default=5.0)
 parser.add_argument("--theta_min", type=float, help="theta min (deg)", default=0.01)
 parser.add_argument("--theta_max", type=float, help="theta max (deg)", default=2.0)
+parser.add_argument("--nbins", type=int, help="number of bins for the correlation function", default=10)
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1.0)", default=1.0)
 parser.add_argument("--norm_tif", action='store_true', help="apply normalization to tif files (values from 0 to 255).")
 parser.add_argument("--reject_clean", action='store_true', help="option if you do not need the clean map (e.g. if NSIDE is large).")
 parser.add_argument("--show_map", action='store_true', help="show maps and projections.")
+parser.add_argument("--show_beam", action='store_true', help="show beams.")
 parser.add_argument("--patch_GAL", type=int, help="select a square along the Galactic plane of desired size.", default=None)
 
 args = parser.parse_args()
@@ -62,20 +71,28 @@ N2h_up = args.N2h_up
 alpha_low = args.alpha_low
 alpha_up = args.alpha_up
 add_noise = args.add_noise
+pivot_noise = args.pivot_noise
 save_noise = args.save_noise
 N_low = args.N_low
 N_up = args.N_up
 add_beam = args.add_beam
+beam_shape = args.beam_shape
+beam_size = args.beam_size
+filter = args.filter
+save_beam = args.save_beam
+random_beam = args.random_beam
 beam_path = args.beam_path
 add_gauss_beam = args.add_gauss_beam
 b_low = args.b_low
 b_up = args.b_up
 theta_min = args.theta_min
 theta_max = args.theta_max
+nbins = args.nbins
 fact = args.fact
 norm_tif = args.norm_tif
 reject_clean = args.reject_clean
 show_map = args.show_map
+show_beam = args.show_beam
 patch_GAL = args.patch_GAL
 
 if add_beam and add_gauss_beam:
@@ -94,6 +111,109 @@ def rebin(a, shape):
     sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
     return a.reshape(sh).mean(-1).mean(1)
 
+if add_beam:
+    print('*** Loading beams...')
+    beams = []
+    # get all beam files from beam_path with '*.fits'
+    beam_ids = glob.glob(beam_path + '*.fits')
+    #print(beam_ids)
+    #print(len(beam_ids))
+    # loading the fits-files and stacking them together
+    for k, beam_id in enumerate(beam_ids):
+        print('beam ID:',beam_id)
+        with fits.open(beam_id) as hdul:
+            beam_data = hdul[0].data
+            hdr = hdul[0].header
+            old_shape = np.shape(beam_data)
+            old_size = np.abs(hdr['CDELT1'])
+            if hdr['CUNIT1'] == 'deg':
+                old_size = old_size*3600.0
+                print('resolution: {:.1f} arcsec'.format(old_size))
+
+        beam_data = beam_data[0][0][:][:]
+        print('shape:',np.shape(beam_data))
+        '''
+        #CHECK NORMALIZATION
+        x1, x2 = hdr['CDELT1'], hdr['CDELT1']+len(beam_data)*np.abs(hdr['CDELT1'])
+        xx = np.linspace(x1, x2, num=len(beam_data))
+        y1, y2 = hdr['CDELT2'],hdr['CDELT2']+len(beam_data)*np.abs(hdr['CDELT2'])
+        yy = np.linspace(y1, y2, num=len(beam_data))
+        beam_interp = interp2d(xx,yy,beam_data)
+        def wrap(x,y):
+            return beam_interp(x,y)[0]
+        print(beam_interp(x1,y2))
+        print(wrap(x1,y2))
+        result = nquad(wrap,[x1,x2],[y1,y2])
+        print(result)
+        exit()
+        '''
+        if show_beam:
+            plt.imshow(beam_data)
+            plt.colorbar()
+            ##plt.savefig('test_beam.pdf')
+            plt.show()
+            plt.clf()
+
+        if beam_size is not None:
+            new_size = beam_size
+            print('new resolution is set to: {:.1f} arcsec'.format(new_size))
+            ns = int(len(beam_data)*old_size//new_size)
+            new_shape = (ns,ns)
+            print('new shape:',new_shape)
+            ##ALTERNATIVE RESIZING
+            #from photutils.psf.matching import resize_psf
+            #new_psf = resize_psf(beam_data,2.0,46.0)
+            #idx1 = (new_shape[0]-filter)//2
+            #idx2 = (new_shape[1]-filter)//2
+            #new_psf = new_psf[idx1:idx1+filter,idx2:idx2+filter]
+            #plt.imshow(new_psf)
+            #plt.colorbar()
+            #plt.show()
+            #plt.clf()
+            #print(np.shape(new_psf))
+            #print(np.sum(new_psf))
+            #
+        if beam_shape is not None:
+            new_shape = beam_shape
+            print('beam shape is set to:',beam_shape)
+            new_size = len(beam_data)*old_size//new_shape[0]
+            print('new resolution: {:.1f} arcsec'.format(new_size))
+
+        if beam_data.shape is not new_shape:
+            print('Downgrading beam array...')
+            xdiv = beam_data.shape[0]//new_shape[0]
+            ydiv = beam_data.shape[1]//new_shape[1]
+            xx = (int(new_shape[0]*(xdiv+1))-beam_data.shape[0])//2
+            yy = (int(new_shape[1]*(ydiv+1))-beam_data.shape[1])//2
+            pad = np.zeros((xx,beam_data.shape[1]))
+            beam_data = np.concatenate((beam_data,pad),axis=0)
+            beam_data = np.concatenate((pad,beam_data),axis=0)
+            pad = np.zeros((beam_data.shape[0],yy))
+            beam_data = np.concatenate((beam_data,pad),axis=1)
+            beam_data = np.concatenate((pad,beam_data),axis=1)
+            beam_data = rebin(beam_data,new_shape)
+            #beam_data = beam_data*(new_size/old_size)**2
+            print(np.shape(beam_data))
+        if filter is not None:
+            print('Selecting filter...')
+            idx1 = (new_shape[0]-filter)//2
+            idx2 = (new_shape[1]-filter)//2
+            beam_data = beam_data[idx1:idx1+filter,idx2:idx2+filter]
+            print(np.shape(beam_data))
+            if show_beam:
+                plt.imshow(beam_data)
+                plt.colorbar()
+                ##plt.savefig('test_beam.pdf')
+                plt.show()
+                plt.clf()
+
+        if save_beam:
+            beam_id = beam_id.replace('.fits','_res{:.1f}.fits'.format(new_size))
+            beam_id = beam_id.replace('.fits','_filter{:d}x{:d}.fits'.format(filter,filter))
+            print(beam_id)
+            #NOTE: FINISH THIS PART!
+        beams.append(beam_data)
+
 #power spectrum files; assumed to be normalized with l*(l+1)/(2 Pi)
 in_1halo = 'Cl_radio_1.dat'
 in_2halo = 'Cl_radio_2.dat'
@@ -103,7 +223,7 @@ in_2halo = 'Cl_radio_2.dat'
 NSIDE = 4096
 #multipole range
 l_start = 5
-l_stop = 1500
+l_stop = 10000#1500
 #size of tif image
 x_size = 20000
 y_size = int(x_size/2)
@@ -114,8 +234,8 @@ NPIX = 12*NSIDE**2
 ll = np.arange(l_start,l_stop)
 norm = 2.*np.pi/(ll*(ll+1))
 
-th_list = np.logspace(np.log10(theta_min), np.log10(theta_max), num=10)
-print('Theta values (deg):')
+th_list = np.logspace(np.log10(theta_min), np.log10(theta_max), num=nbins)
+print('*** Theta values (deg):')
 print(th_list)
 cl_list = [np.insert(ll,0,range(l_start))]
 CCF_list = [th_list]
@@ -124,7 +244,7 @@ pl = []
 for i in range(len(th_list)):
     pl.append(leg(ll,np.cos(np.radians(th_list[i]))))
 
-print('factor for the correlation function:',fact)
+print('*** factor for the correlation function:',fact)
 
 if tag is not '':
     text = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N, N1h, N2h, alpha'+'\n'
@@ -137,19 +257,24 @@ else:
     text_CCF = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
 
 if add_noise:
-    text = text.replace('\n',', Cl_100, N_lev, N_val\n')
-if add_beam:
+    text = text.replace('\n',', Cl_'+str(pivot_noise)+', N_norm, N_val\n')
+if add_gauss_beam:
     text = text.replace('\n',', beam_lev, beam_val (deg)\n')
+if add_beam:
+    text = text.replace('\n',', beam decl\n')
 
 if out_dir is not '' and out_dir[-1] is not '/':
     out_dir = out_dir+'/'
 
 def read_PS(path,in_1halo,in_2halo,ll,norm):
     cl1 = np.genfromtxt(path+in_1halo)
-    cl1_interp = interp1d(np.log(cl1[:,0]),np.log(cl1[:,1]))
+    cl1_interp = interp1d(np.log(cl1[:,0]),np.log(cl1[:,1]),fill_value='extrapolate')
+    #print(cl1[:,0])
     cl1_fine = np.exp(cl1_interp(np.log(ll)))*norm
     cl2 = np.genfromtxt(path+in_2halo)
     cl2_interp = interp1d(np.log(cl2[:,0]),np.log(cl2[:,1]))
+    #print(cl2[:,0])
+    #exit()
     cl2_fine = np.exp(cl2_interp(np.log(ll)))*norm
     cl_tot = cl1_fine+cl2_fine
     cl_tot = np.insert(cl_tot,0,np.zeros(l_start))
@@ -181,16 +306,16 @@ for i in range(N_start,N_stop+1):
     cl_temp = cl_1h_temp+cl_2h_temp
     cl_list.append(cl_temp)
     if plot_test:
-        plt.clf()
         plt.plot(range(len(cl_1h)),cl_1h,'--',linewidth=2,color='orange')
         plt.plot(range(len(cl_1h)),cl_2h,'.-',linewidth=2,color='orange')
         plt.plot(range(len(cl_1h)),cl_1h_temp,'--',linewidth=2,color='blue')
         plt.plot(range(len(cl_1h)),cl_2h_temp,'.-',linewidth=2,color='blue')
-        plt.xlim(xmin=40,xmax=1500)
-        plt.ylim(ymin=1.e-9,ymax=1.e-5)
+        plt.xlim(xmin=40,xmax=5000)
+        plt.ylim(ymin=1.e-12,ymax=1.e-5)
         plt.xscale('log')
         plt.yscale('log')
-        plt.savefig('test_PS.png')
+        plt.show()
+        #plt.savefig('test_PS.png')
         plt.clf()
 
     print('Writing Power Spectrum...')
@@ -215,31 +340,50 @@ for i in range(N_start,N_stop+1):
         plt.clf()
 
     out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
-    print('Creating clean map from Power Spectrum...')
-    msim = hp.synfast(cl_temp,NSIDE)
-    if show_map:
-        hp.mollview(msim)
-        plt.show()
-    if not reject_clean:
-        print('Saving clean map...')
-        hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
+    if not add_noise:
+        print('Creating clean map from Power Spectrum...')
+        msim = hp.synfast(cl_temp,NSIDE)
+        if show_map:
+            hp.mollview(msim)
+            plt.show()
+            plt.clf()
+        if not reject_clean:
+            print('Saving clean map...')
+            hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
 
     #moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
     #plt.savefig('/home/simone/RadioML/data/test/map_clean.png')
     if add_noise:
-        print('Creating noise from random level...')
+        #print('Creating noise from random normalization...')
         N = np.round(10**random.uniform(np.log10(N_low),np.log10(N_up)),1)
-        print('Noise level:',N)
-        NN = cl_tot[100]*N
-        print('N:',NN)
+        print('Noise normalization:',N)
+        print('Noise pivot multipole:',pivot_noise)
+        NN = cl_tot[pivot_noise]*N
+        print('Noise value:',NN)
         out_name = out_name+'_N_'+str(N)
-        text = text+', '+'{:.3e}'.format(cl_tot[100])+', '+str(N)+', '+'{:.3e}'.format(NN)
-
+        text = text+', '+'{:.3e}'.format(cl_tot[pivot_noise])+', '+str(N)+', '+'{:.3e}'.format(NN)
+        if plot_test:
+            plt.plot(range(len(cl_1h)),cl_1h,'--',linewidth=2,color='orange')
+            plt.plot(range(len(cl_1h)),cl_2h,'.-',linewidth=2,color='orange')
+            plt.plot(range(len(cl_1h)),cl_1h_temp,'--',linewidth=2,color='blue')
+            plt.plot(range(len(cl_1h)),cl_2h_temp,'.-',linewidth=2,color='blue')
+            plt.plot(range(len(cl_1h)),cl_temp,'--',linewidth=2,color='black')
+            plt.plot(range(len(cl_1h)),[NN]*len(cl_1h),'--',linewidth=2,color='black')
+            plt.plot(range(len(cl_1h)),cl_temp+NN,'-',linewidth=2,color='black')
+            plt.xlim(xmin=40,xmax=5000)
+            plt.ylim(ymin=1.e-12,ymax=1.e-5)
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.show()
+            #plt.savefig('test_PS.png')
+            plt.clf()
+        print('Creating map from Power Spectrum with noise...')
+        msim = hp.synfast(cl_temp+NN,NSIDE)
         #if not reject_clean:
         #    print('Combining maps...')
         #    msim = msim + mnoise
         if save_noise:
-            out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_N_'+str(N)+'.fits'
+            out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_l'+str(pivot_noise)+'_N_'+str(N)+'.fits'
             print('Creating noise map...')
             mnoise = hp.synfast([NN]*len(ll),NSIDE)
             print('Saving noise map...')
@@ -261,6 +405,7 @@ for i in range(N_start,N_stop+1):
     moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
     if show_map:
         plt.show()
+        plt.clf()
     #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
     if patch_GAL is not None:
         x_start = np.random.randint(0,high=(x_size-patch_GAL))
@@ -271,53 +416,30 @@ for i in range(N_start,N_stop+1):
         print('Shape patch:')
         print(np.shape(moll_array))
         if show_map:
-            plt.imshow(moll_array)
+            plt.imshow(moll_array,vmin=-1.0,vmax=1.0)
+            plt.colorbar()
+            #plt.savefig('test_patch_GAL.pdf')
             plt.show()
+            plt.clf()
 
     if add_beam:
-        beams = []
-        # get all beam files from beam_path with '*.fits'
-        beam_ids = glob.glob(beam_path + '*.fits')
-        print(beam_ids)
-        # loading the fits-files and stacking them together
-        for k, beam_id in enumerate(beam_ids):
-            with fits.open(beam_id) as hdul:
-                beam_data = hdul[0].data
+        # Using pre-loaded beams
+        if random_beam:
+            k = np.random.randint(0,high=len(beams))
+            print('Convolving with beam:',beam_ids[k])
+            ## ALTERNATIVE CONVOLUTION
+            #from scipy import signal
+            #moll_array_conv = signal.convolve2d(moll_array, beams[k], boundary='fill', mode='same')
+            #
+            from astropy.convolution import convolve
+            moll_array_conv = convolve(moll_array, beams[k], normalize_kernel = False)
 
-            beam_data = beam_data[0][0][:][:]
-            #if small_beam:
-            #    # this takes only a little patch of the beam to have the code run quicker!
-            #    num = 2288
-            #    beam_data = beam_data[num:-num, num:-num]
-            #beam_data = beam_data[np.newaxis,:,:]
-
-            shape = (200,200)
-            if beam_data.shape is not shape:
-                print('Rebinning beam array...')
-                xdiv = beam_data.shape[0]//shape[0]
-                ydiv = beam_data.shape[1]//shape[1]
-                xx = (int(shape[0]*(xdiv+1))-beam_data.shape[0])//2
-                yy = (int(shape[1]*(ydiv+1))-beam_data.shape[1])//2
-                pad = np.zeros((xx,beam_data.shape[1]))
-                beam_data = np.concatenate((beam_data,pad),axis=0)
-                beam_data = np.concatenate((pad,beam_data),axis=0)
-                pad = np.zeros((beam_data.shape[0],yy))
-                beam_data = np.concatenate((beam_data,pad),axis=1)
-                beam_data = np.concatenate((pad,beam_data),axis=1)
-                beam_data = rebin(beam_data,shape)
-
-            beams.append(beam_data)
-        # beams shape = (#beam, pixel-x, pixel-y)
-
-        # convolve moll_array with each beam
-        print('Convolving with beams...')
-        for k in range(len(beams)):
-            from scipy import signal
-            moll_array_conv = signal.convolve2d(moll_array, beams[k], boundary='symm', mode='same')
             if show_map:
-                plt.imshow(moll_array_conv)
+                plt.imshow(moll_array_conv,vmin=-1.0,vmax=1.0)
+                plt.colorbar()
+                #plt.savefig('test_convolved_'+str(k)+'.pdf')
                 plt.show()
-
+                plt.clf()
             if norm_tif:
                 print('Applying normalization to map...')
                 moll_array_conv = normalization(moll_array_conv)
@@ -327,6 +449,45 @@ for i in range(N_start,N_stop+1):
             declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
             out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
             moll_image_conv.save(out_tif)
+
+        else:
+            print('Convolving with beams...')
+            for k, beam in enumerate(beams):
+                ## ALTERNATIVE CONVOLUTION
+                #time_c1 = time.time()
+                #from scipy import signal
+                #moll_array_conv = signal.convolve2d(moll_array, beams[k], boundary='fill', mode='same')
+                #time_c11 = time.time()
+                #print('Elapsed conv time 1:',time_c11 - time_c1)
+                #if show_map:
+                #    plt.imshow(moll_array_conv,vmin=-1.0,vmax=1.0)
+                #    plt.colorbar()
+                #    #plt.savefig('test_convolved_'+str(k)+'.pdf')
+                #    plt.show()
+                #    plt.clf()
+                #
+
+                #time_c2 = time.time()
+                from astropy.convolution import convolve
+                moll_array_conv = convolve(moll_array, beams[k], normalize_kernel = False)
+                #time_c22 = time.time()
+                #print('Elapsed conv time 2:',time_c22 - time_c2)
+
+                if show_map:
+                    plt.imshow(moll_array_conv,vmin=-1.0,vmax=1.0)
+                    plt.colorbar()
+                    #plt.savefig('test_convolved_'+str(k)+'.pdf')
+                    plt.show()
+                    plt.clf()
+                if norm_tif:
+                    print('Applying normalization to map...')
+                    moll_array_conv = normalization(moll_array_conv)
+                moll_image_conv = Image.fromarray(moll_array_conv)
+                # save it with tag for inclination in it
+                print('Saving tif map...')
+                declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
+                out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
+                moll_image_conv.save(out_tif)
 
     else: #the map is saved once
         if norm_tif:
@@ -348,6 +509,7 @@ for i in range(N_start,N_stop+1):
 
     print('Partial time :',time.time()-t_start,'s')
     print('\n')
+    exit()
 
 t_stop=time.time()
 print('Elapsed time for create maps:',t_stop-t_start,'s')
