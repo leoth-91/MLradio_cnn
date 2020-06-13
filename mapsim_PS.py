@@ -56,6 +56,7 @@ parser.add_argument("--norm_tif", action='store_true', help="apply normalization
 parser.add_argument("--reject_clean", action='store_true', help="option if you do not need the clean map (e.g. if NSIDE is large).")
 parser.add_argument("--show_map", action='store_true', help="show maps and projections.")
 parser.add_argument("--show_beam", action='store_true', help="show beams.")
+parser.add_argument("-v","--verbose", action='store_true', help="verbose")
 parser.add_argument("--patch_GAL", type=int, help="select a square along the Galactic plane of desired size.", default=None)
 
 args = parser.parse_args()
@@ -93,6 +94,7 @@ norm_tif = args.norm_tif
 reject_clean = args.reject_clean
 show_map = args.show_map
 show_beam = args.show_beam
+verbose = args.verbose
 patch_GAL = args.patch_GAL
 
 if add_beam and add_gauss_beam:
@@ -291,14 +293,16 @@ for i in range(N_start,N_stop+1):
     f = open(out_text_temp,'w')
     print('*** Map number:',i)
 
-    print('Creating Power Spectrum...')
+    if verbose:
+        print('Creating Power Spectrum...')
     N1h = np.round(10**random.uniform(np.log10(N1h_low),np.log10(N1h_up)),1)
     N2h = np.round(10**random.uniform(np.log10(N2h_low),np.log10(N2h_up)),1)
     alpha = np.round(random.uniform(alpha_low,alpha_up),1)
     text = text+'{:}'.format(i)+', '+'{:.1e}'.format(N1h)+', '+'{:.1e}'.format(N2h)+', '+'{:.1e}'.format(alpha)
-    print('normalization 1-halo:',N1h)
-    print('normalization 2-halo:',N2h)
-    print('power-law index:',alpha)
+    if verbose:
+        print('normalization 1-halo:',N1h)
+        print('normalization 2-halo:',N2h)
+        print('power-law index:',alpha)
     cl_1h_temp = cl_1h*N1h
     cl_2h_temp = cl_2h*N2h
     #cl_1h_temp[l_start:] = cl_1h_temp[l_start:]#*(ll/100.)**alpha
@@ -318,16 +322,19 @@ for i in range(N_start,N_stop+1):
         #plt.savefig('test_PS.png')
         plt.clf()
 
-    print('Writing Power Spectrum...')
+    if verbose:
+        print('Writing Power Spectrum...')
     out_cl = out_dir+'Cl_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
     np.savetxt(out_cl, np.transpose(cl_list), header=text_cl, fmt='%1.4e')
 
-    print('Converting Power Spectrum to CCF...')
+    if verbose:
+        print('Converting Power Spectrum to CCF...')
     for j in range(len(th_list)):
         cl_trans.append(np.sum(cl_temp[l_start:]*pl[j]*A))
     CCF_list.append(np.array(cl_trans)*fact)
 
-    print('Writing CCF...')
+    if verbose:
+        print('Writing CCF...')
     out_CCF = out_dir+'CCF_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
     np.savetxt(out_CCF, np.transpose(CCF_list), header=text_CCF, fmt='%1.4e')
     if plot_test:
@@ -341,14 +348,16 @@ for i in range(N_start,N_stop+1):
 
     out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
     if not add_noise:
-        print('Creating clean map from Power Spectrum...')
+        if verbose:
+            print('Creating clean map from Power Spectrum...')
         msim = hp.synfast(cl_temp,NSIDE)
         if show_map:
             hp.mollview(msim)
             plt.show()
             plt.clf()
         if not reject_clean:
-            print('Saving clean map...')
+            if verbose:
+                print('Saving clean map...')
             hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
 
     #moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
@@ -356,10 +365,12 @@ for i in range(N_start,N_stop+1):
     if add_noise:
         #print('Creating noise from random normalization...')
         N = np.round(10**random.uniform(np.log10(N_low),np.log10(N_up)),1)
-        print('Noise normalization:',N)
-        print('Noise pivot multipole:',pivot_noise)
+        if verbose:
+            print('Noise normalization:',N)
+            print('Noise pivot multipole:',pivot_noise)
         NN = cl_tot[pivot_noise]*N
-        print('Noise value:',NN)
+        if verbose:
+            print('Noise value:',NN)
         out_name = out_name+'_N_'+str(N)
         text = text+', '+'{:.3e}'.format(cl_tot[pivot_noise])+', '+str(N)+', '+'{:.3e}'.format(NN)
         if plot_test:
@@ -377,31 +388,39 @@ for i in range(N_start,N_stop+1):
             plt.show()
             #plt.savefig('test_PS.png')
             plt.clf()
-        print('Creating map from Power Spectrum with noise...')
+
+        if verbose:
+            print('Creating map from Power Spectrum with noise...')
         msim = hp.synfast(cl_temp+NN,NSIDE)
         #if not reject_clean:
         #    print('Combining maps...')
         #    msim = msim + mnoise
         if save_noise:
             out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_l'+str(pivot_noise)+'_N_'+str(N)+'.fits'
-            print('Creating noise map...')
+            if verbose:
+                print('Creating noise map...')
             mnoise = hp.synfast([NN]*len(ll),NSIDE)
-            print('Saving noise map...')
+            if verbose:
+                print('Saving noise map...')
             #print(path+out_noise)
             hp.write_map(path+out_noise,mnoise,coord='G',fits_IDL=False)
 
     if add_gauss_beam:
         b=np.round(10**random.uniform(np.log10(b_low),np.log10(b_up)),1)
-        print('Beam level:',b)
+        if verbose:
+            print('Beam level:',b)
         out_name = out_name+'_b_'+str(b)
-        print('Convolving with beam...')
+        if verbose:
+            print('Convolving with beam...')
         pix_area = 4*np.pi/NPIX
         ang = np.sqrt(pix_area)*b
-        print('sigma:',np.degrees(ang))
+        if verbose:
+            print('sigma:',np.degrees(ang))
         msim = hp.sphtfunc.smoothing(msim,sigma=ang)
         text= text+', '+str(b)+', '+str(np.round(np.degrees(ang),5))
 
-    print('Converting map to cartesian projection...')
+    if verbose:
+        print('Converting map to cartesian projection...')
     moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
     if show_map:
         plt.show()
@@ -413,7 +432,8 @@ for i in range(N_start,N_stop+1):
         moll_array = np.delete(moll_array,np.arange(y_size-y_del,y_size,dtype=int),axis=0)
         moll_array = np.delete(moll_array,np.arange(0,y_del,dtype=int),axis=0)
         moll_array = moll_array[:,x_start:x_start+patch_GAL]
-        print('Shape patch:')
+        if verbose:
+            print('Shape patch:')
         print(np.shape(moll_array))
         if show_map:
             plt.imshow(moll_array,vmin=-1.0,vmax=1.0)
@@ -426,7 +446,8 @@ for i in range(N_start,N_stop+1):
         # Using pre-loaded beams
         if random_beam:
             k = np.random.randint(0,high=len(beams))
-            print('Convolving with beam:',beam_ids[k])
+            if verbose:
+                print('Convolving with beam:',beam_ids[k])
             ## ALTERNATIVE CONVOLUTION
             #from scipy import signal
             #moll_array_conv = signal.convolve2d(moll_array, beams[k], boundary='fill', mode='same')
@@ -441,17 +462,20 @@ for i in range(N_start,N_stop+1):
                 plt.show()
                 plt.clf()
             if norm_tif:
-                print('Applying normalization to map...')
+                if verbose:
+                    print('Applying normalization to map...')
                 moll_array_conv = normalization(moll_array_conv)
             moll_image_conv = Image.fromarray(moll_array_conv)
             # save it with tag for inclination in it
-            print('Saving tif map...')
+            if verbose:
+                print('Saving tif map...')
             declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
             out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
             moll_image_conv.save(out_tif)
 
         else:
-            print('Convolving with beams...')
+            if verbose:
+                print('Convolving with beams...')
             for k, beam in enumerate(beams):
                 ## ALTERNATIVE CONVOLUTION
                 #time_c1 = time.time()
@@ -480,7 +504,8 @@ for i in range(N_start,N_stop+1):
                     plt.show()
                     plt.clf()
                 if norm_tif:
-                    print('Applying normalization to map...')
+                    if verbose:
+                        print('Applying normalization to map...')
                     moll_array_conv = normalization(moll_array_conv)
                 moll_image_conv = Image.fromarray(moll_array_conv)
                 # save it with tag for inclination in it
@@ -491,25 +516,30 @@ for i in range(N_start,N_stop+1):
 
     else: #the map is saved once
         if norm_tif:
-            print('Applying normalization to map...')
+            if verbose:
+                print('Applying normalization to map...')
             moll_array = normalization(moll_array)
             #moll_array = np.array(moll_array, dtype=np.uint8)
-        print('Converting map to tif format...')
+        if verbose:
+            print('Converting map to tif format...')
         moll_image = Image.fromarray(moll_array)
 
-        print('Saving tif map...')
+        if verbose:
+            print('Saving tif map...')
         out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_data.tif'
         moll_image.save(out_tif)
 
     text = text+'\n'
-    print('Writing parameters file...')
+    if verbose:
+        print('Writing parameters file...')
     f.write(text)
     f.close()
     sub.call(['cp',out_text_temp,out_text],) #shell=[bool])
 
-    print('Partial time :',time.time()-t_start,'s')
-    print('\n')
-    exit()
+    if verbose:
+        print('Partial time :',time.time()-t_start,'s')
+        print('\n')
+    #exit()
 
 t_stop=time.time()
 print('Elapsed time for create maps:',t_stop-t_start,'s')
