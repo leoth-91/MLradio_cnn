@@ -225,7 +225,8 @@ in_2halo = 'Cl_radio_2.dat'
 NSIDE = 4096
 #multipole range
 l_start = 5
-l_stop = 10000#1500
+l_stop = 10000
+idx = np.logspace(np.log10(l_start),np.log10(l_stop-1),num=30,dtype=int)
 #size of tif image
 x_size = 20000
 y_size = int(x_size/2)
@@ -239,7 +240,8 @@ norm = 2.*np.pi/(ll*(ll+1))
 th_list = np.logspace(np.log10(theta_min), np.log10(theta_max), num=nbins)
 print('*** Theta values (deg):')
 print(th_list)
-cl_list = [np.insert(ll,0,range(l_start))]
+#cl_list = [np.insert(ll,0,range(l_start))]
+cl_list = [idx]
 CCF_list = [th_list]
 A = (2.*ll+1.)/(4.*np.pi)
 pl = []
@@ -249,24 +251,47 @@ for i in range(len(th_list)):
 print('*** factor for the correlation function:',fact)
 
 if tag is not '':
-    text = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N, N1h, N2h, alpha'+'\n'
+    text = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_cl = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_CCF = '#TAG: '+tag+'\n'+'#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     tag = tag+'_'
 else:
-    text = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'+'#N, N1h, N2h, alpha'+'\n'
+    text = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_cl = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
     text_CCF = '#Maps number: '+str(N_start)+' - '+str(N_stop)+'\n'
 
+text = text +'#N, N1h, N2h, alpha'
 if add_noise:
-    text = text.replace('\n',', Cl_'+str(pivot_noise)+', N_norm, N_val\n')
+    text = text + ', Cl_'+str(pivot_noise)+', N_norm, N_val'
 if add_gauss_beam:
-    text = text.replace('\n',', beam_lev, beam_val (deg)\n')
+    text = text + ', beam_lev, beam_val (deg)'
 if add_beam:
-    text = text.replace('\n',', beam decl\n')
+    text = text + ', beam decl'
+text = text + '\n'
 
 if out_dir is not '' and out_dir[-1] is not '/':
     out_dir = out_dir+'/'
+out_text = out_dir+'msim_'+tag+str(N_start)+'_'+str(N_stop)+'.txt'
+out_text_temp = out_dir+'msim_'+tag+'back.txt'
+out_cl = out_dir+'Cl_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
+out_CCF = out_dir+'CCF_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
+if os.path.isfile(out_text):
+    print('*** Parameters file already present!')
+    f = open(out_text,'r')
+    text = f.read()
+    #print(text)
+    cl_list = np.genfromtxt(out_cl)
+    CCF_list = np.genfromtxt(out_CCF)
+    displace = len(cl_list[0])-1
+    print('*** Restarting from:')
+    print(N_start+displace)
+    cl_list = list(np.transpose(cl_list))
+    #print(cl_list)
+    CCF_list = list(np.transpose(CCF_list))
+    #print(CCF_list)
+    #exit()
+else:
+    displace = 0
 
 def read_PS(path,in_1halo,in_2halo,ll,norm):
     cl1 = np.genfromtxt(path+in_1halo)
@@ -284,13 +309,12 @@ def read_PS(path,in_1halo,in_2halo,ll,norm):
 cl_tot,cl_1h,cl_2h = read_PS(path,in_1halo,in_2halo,ll,norm)
 
 t_start = time.time()
-out_text = out_dir+'msim_'+tag+str(N_start)+'_'+str(N_stop)+'.txt'
 
-for i in range(N_start,N_stop+1):
+for i in range(N_start+displace,N_stop+1):
     cl_trans = []
 
-    out_text_temp = out_dir+'msim_'+tag+'back.txt'
-    f = open(out_text_temp,'w')
+    #f = open(out_text_temp,'w')
+    f = open(out_text,'w')
     print('*** Map number:',i)
 
     if verbose:
@@ -308,12 +332,13 @@ for i in range(N_start,N_stop+1):
     #cl_1h_temp[l_start:] = cl_1h_temp[l_start:]#*(ll/100.)**alpha
     cl_2h_temp[l_start:] = cl_2h_temp[l_start:]*(ll/100.)**alpha
     cl_temp = cl_1h_temp+cl_2h_temp
-    cl_list.append(cl_temp)
+    cl_list.append(cl_temp[idx])
     if plot_test:
         plt.plot(range(len(cl_1h)),cl_1h,'--',linewidth=2,color='orange')
         plt.plot(range(len(cl_1h)),cl_2h,'.-',linewidth=2,color='orange')
         plt.plot(range(len(cl_1h)),cl_1h_temp,'--',linewidth=2,color='blue')
         plt.plot(range(len(cl_1h)),cl_2h_temp,'.-',linewidth=2,color='blue')
+        plt.plot(idx,cl_1h_temp[idx]+cl_2h_temp[idx],'-',linewidth=2,color='black')
         plt.xlim(xmin=40,xmax=5000)
         plt.ylim(ymin=1.e-12,ymax=1.e-5)
         plt.xscale('log')
@@ -323,30 +348,22 @@ for i in range(N_start,N_stop+1):
         plt.clf()
 
     if verbose:
-        print('Writing Power Spectrum...')
-    out_cl = out_dir+'Cl_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
-    np.savetxt(out_cl, np.transpose(cl_list), header=text_cl, fmt='%1.4e')
-
-    if verbose:
         print('Converting Power Spectrum to CCF...')
     for j in range(len(th_list)):
         cl_trans.append(np.sum(cl_temp[l_start:]*pl[j]*A))
     CCF_list.append(np.array(cl_trans)*fact)
 
-    if verbose:
-        print('Writing CCF...')
-    out_CCF = out_dir+'CCF_'+tag+str(N_start)+'_'+str(N_stop)+'_label.dat'
-    np.savetxt(out_CCF, np.transpose(CCF_list), header=text_CCF, fmt='%1.4e')
     if plot_test:
         plt.plot(th_list,CCF_list[-1],'o-',linewidth=1,color='steelblue')
         plt.xlim(xmin=theta_min,xmax=theta_max)
         #plt.ylim(ymin=,ymax=)
         plt.xscale('log')
         plt.yscale('log')
-        plt.savefig('test_CCF.png')
+        plt.show()
+        #plt.savefig('test_CCF.png')
         plt.clf()
 
-    out_name = out_dir+'msim_'+tag+str(i).zfill(4)+'.fits'
+    out_name = out_dir+'msim_'+tag+str(i).zfill(5)+'.fits'
     if not add_noise:
         if verbose:
             print('Creating clean map from Power Spectrum...')
@@ -396,7 +413,7 @@ for i in range(N_start,N_stop+1):
         #    print('Combining maps...')
         #    msim = msim + mnoise
         if save_noise:
-            out_noise = 'noise/noise_'+tag+str(i).zfill(4)+'_l'+str(pivot_noise)+'_N_'+str(N)+'.fits'
+            out_noise = 'noise/noise_'+tag+str(i).zfill(5)+'_l'+str(pivot_noise)+'_N_'+str(N)+'.fits'
             if verbose:
                 print('Creating noise map...')
             mnoise = hp.synfast([NN]*len(ll),NSIDE)
@@ -434,7 +451,7 @@ for i in range(N_start,N_stop+1):
         moll_array = moll_array[:,x_start:x_start+patch_GAL]
         if verbose:
             print('Shape patch:')
-        print(np.shape(moll_array))
+            print(np.shape(moll_array))
         if show_map:
             plt.imshow(moll_array,vmin=-1.0,vmax=1.0)
             plt.colorbar()
@@ -470,7 +487,7 @@ for i in range(N_start,N_stop+1):
             if verbose:
                 print('Saving tif map...')
             declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
-            out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
+            out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_'+str(declination).zfill(2)+'_data.tif'
             moll_image_conv.save(out_tif)
 
         else:
@@ -511,7 +528,7 @@ for i in range(N_start,N_stop+1):
                 # save it with tag for inclination in it
                 print('Saving tif map...')
                 declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
-                out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_'+str(declination).zfill(2)+'_data.tif'
+                out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_'+str(declination).zfill(2)+'_data.tif'
                 moll_image_conv.save(out_tif)
 
     else: #the map is saved once
@@ -526,7 +543,7 @@ for i in range(N_start,N_stop+1):
 
         if verbose:
             print('Saving tif map...')
-        out_tif = out_dir+'msim_'+tag+str(i).zfill(4)+'_data.tif'
+        out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_data.tif'
         moll_image.save(out_tif)
 
     text = text+'\n'
@@ -534,7 +551,13 @@ for i in range(N_start,N_stop+1):
         print('Writing parameters file...')
     f.write(text)
     f.close()
-    sub.call(['cp',out_text_temp,out_text],) #shell=[bool])
+    #sub.call(['cp',out_text_temp,out_text],) #shell=[bool])
+    if verbose:
+        print('Writing Power Spectrum...')
+    np.savetxt(out_cl, np.transpose(cl_list), header=text_cl, fmt='%1.4e')
+    if verbose:
+        print('Writing CCF...')
+    np.savetxt(out_CCF, np.transpose(CCF_list), header=text_CCF, fmt='%1.4e')
 
     if verbose:
         print('Partial time :',time.time()-t_start,'s')
