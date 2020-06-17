@@ -58,6 +58,7 @@ parser.add_argument("--show_map", action='store_true', help="show maps and proje
 parser.add_argument("--show_beam", action='store_true', help="show beams.")
 parser.add_argument("-v","--verbose", action='store_true', help="verbose")
 parser.add_argument("--patch_GAL", type=int, help="select a square along the Galactic plane of desired size.", default=None)
+parser.add_argument("--fast_patch", action='store_true', help="fast selection of Galactic patch projection.")
 
 args = parser.parse_args()
 tag = args.tag
@@ -96,6 +97,7 @@ show_map = args.show_map
 show_beam = args.show_beam
 verbose = args.verbose
 patch_GAL = args.patch_GAL
+fast_patch = args.fast_patch
 
 if add_beam and add_gauss_beam:
     print('ERROR: Choose one type of beam.')
@@ -226,7 +228,8 @@ NSIDE = 4096
 #multipole range
 l_start = 5
 l_stop = 10000
-idx = np.logspace(np.log10(l_start),np.log10(l_stop-1),num=30,dtype=int)
+ncl = 30
+idx = np.logspace(np.log10(l_start),np.log10(l_stop-1),num=ncl,dtype=int)
 #size of tif image
 x_size = 20000
 y_size = int(x_size/2)
@@ -237,12 +240,25 @@ NPIX = 12*NSIDE**2
 ll = np.arange(l_start,l_stop)
 norm = 2.*np.pi/(ll*(ll+1))
 
+if fast_patch:
+    lon = np.linspace(0.0,360.0/x_size*patch_GAL,num=patch_GAL)
+    lat = np.flip(np.linspace(-90.0/y_size*patch_GAL,90.0/y_size*patch_GAL,num=patch_GAL))
+    cc = np.array(np.meshgrid(lat, lon))
+    cc = np.reshape(cc.T,(-1,2))
+    lat = cc[:,0]
+    lon = cc[:,1]
+    hpx_idx = hp.pixelfunc.ang2pix(NSIDE,lon,lat,lonlat=True)
+
 th_list = np.logspace(np.log10(theta_min), np.log10(theta_max), num=nbins)
 print('*** Theta values (deg):')
 print(th_list)
 #cl_list = [np.insert(ll,0,range(l_start))]
-cl_list = [idx]
-CCF_list = [th_list]
+#cl_list = [idx]
+#CCF_list = [th_list]
+cl_list = np.zeros((ncl,N_stop-N_start+2))
+cl_list[:,0] = np.insert(ll,0,range(l_start))[idx]
+CCF_list = np.zeros((nbins,N_stop-N_start+2))
+CCF_list[:,0] = th_list
 A = (2.*ll+1.)/(4.*np.pi)
 pl = []
 for i in range(len(th_list)):
@@ -282,12 +298,13 @@ if os.path.isfile(out_text):
     #print(text)
     cl_list = np.genfromtxt(out_cl)
     CCF_list = np.genfromtxt(out_CCF)
-    displace = len(cl_list[0])-1
+    #displace = len(cl_list[0])-1
+    displace = len(np.where(cl_list[0]>0.)[0])-1
     print('*** Restarting from:')
     print(N_start+displace)
-    cl_list = list(np.transpose(cl_list))
+    #cl_list = list(np.transpose(cl_list))
     #print(cl_list)
-    CCF_list = list(np.transpose(CCF_list))
+    #CCF_list = list(np.transpose(CCF_list))
     #print(CCF_list)
     #exit()
 else:
@@ -312,7 +329,7 @@ t_start = time.time()
 
 for i in range(N_start+displace,N_stop+1):
     cl_trans = []
-
+    col = i - N_start+1
     #f = open(out_text_temp,'w')
     f = open(out_text,'w')
     print('*** Map number:',i)
@@ -322,7 +339,8 @@ for i in range(N_start+displace,N_stop+1):
     N1h = np.round(10**random.uniform(np.log10(N1h_low),np.log10(N1h_up)),1)
     N2h = np.round(10**random.uniform(np.log10(N2h_low),np.log10(N2h_up)),1)
     alpha = np.round(random.uniform(alpha_low,alpha_up),1)
-    text = text+'{:}'.format(i)+', '+'{:.1e}'.format(N1h)+', '+'{:.1e}'.format(N2h)+', '+'{:.1e}'.format(alpha)
+    #text = text.join(['{:}'.format(i),', ','{:.1e}'.format(N1h),', ','{:.1e}'.format(N2h),', ','{:.1e}'.format(alpha)])
+    text = ''.join([text,'{:}'.format(i),', ','{:.1e}'.format(N1h),', ','{:.1e}'.format(N2h),', ','{:.1e}'.format(alpha)])
     if verbose:
         print('normalization 1-halo:',N1h)
         print('normalization 2-halo:',N2h)
@@ -332,7 +350,8 @@ for i in range(N_start+displace,N_stop+1):
     #cl_1h_temp[l_start:] = cl_1h_temp[l_start:]#*(ll/100.)**alpha
     cl_2h_temp[l_start:] = cl_2h_temp[l_start:]*(ll/100.)**alpha
     cl_temp = cl_1h_temp+cl_2h_temp
-    cl_list.append(cl_temp[idx])
+    #cl_list.append(cl_temp[idx])
+    cl_list[:,col] = cl_temp[idx]
     if plot_test:
         plt.plot(range(len(cl_1h)),cl_1h,'--',linewidth=2,color='orange')
         plt.plot(range(len(cl_1h)),cl_2h,'.-',linewidth=2,color='orange')
@@ -351,10 +370,11 @@ for i in range(N_start+displace,N_stop+1):
         print('Converting Power Spectrum to CCF...')
     for j in range(len(th_list)):
         cl_trans.append(np.sum(cl_temp[l_start:]*pl[j]*A))
-    CCF_list.append(np.array(cl_trans)*fact)
+    #CCF_list.append(np.array(cl_trans)*fact)
+    CCF_list[:,col] = np.array(cl_trans)*fact
 
     if plot_test:
-        plt.plot(th_list,CCF_list[-1],'o-',linewidth=1,color='steelblue')
+        plt.plot(th_list,CCF_list[:,col],'o-',linewidth=1,color='steelblue')
         plt.xlim(xmin=theta_min,xmax=theta_max)
         #plt.ylim(ymin=,ymax=)
         plt.xscale('log')
@@ -389,7 +409,8 @@ for i in range(N_start+displace,N_stop+1):
         if verbose:
             print('Noise value:',NN)
         out_name = out_name+'_N_'+str(N)
-        text = text+', '+'{:.3e}'.format(cl_tot[pivot_noise])+', '+str(N)+', '+'{:.3e}'.format(NN)
+        #text = text.join([', ','{:.3e}'.format(cl_tot[pivot_noise]),', ',str(N),', ','{:.3e}'.format(NN)])
+        text = ''.join([text,', ','{:.3e}'.format(cl_tot[pivot_noise]),', ',str(N),', ','{:.3e}'.format(NN)])
         if plot_test:
             plt.plot(range(len(cl_1h)),cl_1h,'--',linewidth=2,color='orange')
             plt.plot(range(len(cl_1h)),cl_2h,'.-',linewidth=2,color='orange')
@@ -408,7 +429,7 @@ for i in range(N_start+displace,N_stop+1):
 
         if verbose:
             print('Creating map from Power Spectrum with noise...')
-        msim = hp.synfast(cl_temp+NN,NSIDE)
+        msim = hp.synfast(cl_temp+NN,NSIDE,new=True,lmax=l_stop)
         #if not reject_clean:
         #    print('Combining maps...')
         #    msim = msim + mnoise
@@ -434,31 +455,51 @@ for i in range(N_start+displace,N_stop+1):
         if verbose:
             print('sigma:',np.degrees(ang))
         msim = hp.sphtfunc.smoothing(msim,sigma=ang)
-        text= text+', '+str(b)+', '+str(np.round(np.degrees(ang),5))
+        #text= text+', '+str(b)+', '+str(np.round(np.degrees(ang),5))
+        text= ''.join([text,', '+str(b)+', '+str(np.round(np.degrees(ang),5))])
 
     if verbose:
         print('Converting map to cartesian projection...')
-    moll_array = hp.cartview(msim, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
-    if show_map:
-        plt.show()
-        plt.clf()
-    #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
-    if patch_GAL is not None:
-        x_start = np.random.randint(0,high=(x_size-patch_GAL))
-        y_del = (y_size-patch_GAL)//2
-        moll_array = np.delete(moll_array,np.arange(y_size-y_del,y_size,dtype=int),axis=0)
-        moll_array = np.delete(moll_array,np.arange(0,y_del,dtype=int),axis=0)
-        moll_array = moll_array[:,x_start:x_start+patch_GAL]
-        if verbose:
-            print('Shape patch:')
-            print(np.shape(moll_array))
+    if fast_patch:
+        moll_array = msim[hpx_idx]
+        moll_array = np.reshape(moll_array,(patch_GAL,patch_GAL))
+    else:
+        fig = plt.figure(1)
+        moll_array = hp.cartview(msim,fig=1, title=None, xsize=x_size, ysize=y_size, return_projected_map=True)
+        del msim
+
         if show_map:
-            plt.imshow(moll_array,vmin=-1.0,vmax=1.0)
-            plt.colorbar()
-            #plt.savefig('test_patch_GAL.pdf')
             plt.show()
             plt.clf()
 
+        #plt.savefig('/home/simone/RadioML/data/test/map_noise.png')
+        if patch_GAL is not None:
+            x_start = np.random.randint(0,high=(x_size-patch_GAL))
+            y_del = (y_size-patch_GAL)//2
+            moll_array = np.delete(moll_array,np.arange(y_size-y_del,y_size,dtype=int),axis=0)
+            moll_array = np.delete(moll_array,np.arange(0,y_del,dtype=int),axis=0)
+            moll_array = moll_array[:,x_start:x_start+patch_GAL]
+            if verbose:
+                print('Shape patch:')
+                print(np.shape(moll_array))
+            if show_map:
+                plt.imshow(moll_array,vmin=-1.0,vmax=1.0)
+                plt.colorbar()
+                #plt.savefig('test_patch_GAL.pdf')
+                plt.show()
+                plt.clf()
+                '''
+                plt.imshow(map_patch,vmin=-1.0,vmax=1.0)
+                plt.colorbar()
+                plt.savefig('test_patch_GAL_new.pdf')
+                #plt.show()
+                plt.clf()
+                plt.imshow(map_patch-moll_array,vmin=-1.0,vmax=1.0)
+                plt.colorbar()
+                plt.savefig('test_patch_GAL_diff.pdf')
+                #plt.show()
+                plt.clf()
+                '''
     if add_beam:
         # Using pre-loaded beams
         if random_beam:
@@ -489,6 +530,8 @@ for i in range(N_start+displace,N_stop+1):
             declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
             out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_'+str(declination).zfill(2)+'_data.tif'
             moll_image_conv.save(out_tif)
+            del moll_array_conv
+            del moll_image_conv
 
         else:
             if verbose:
@@ -530,6 +573,8 @@ for i in range(N_start+displace,N_stop+1):
                 declination = beam_ids[k][len(beam_path)+47:-len('.fits')]
                 out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_'+str(declination).zfill(2)+'_data.tif'
                 moll_image_conv.save(out_tif)
+                del moll_array_conv
+                del moll_image_conv
 
     else: #the map is saved once
         if norm_tif:
@@ -545,8 +590,13 @@ for i in range(N_start+displace,N_stop+1):
             print('Saving tif map...')
         out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_data.tif'
         moll_image.save(out_tif)
+        del moll_image
 
-    text = text+'\n'
+    del moll_array
+    #plt.close('all')
+
+    #text = text+'\n'
+    text = ''.join([text,'\n'])
     if verbose:
         print('Writing parameters file...')
     f.write(text)
@@ -554,14 +604,16 @@ for i in range(N_start+displace,N_stop+1):
     #sub.call(['cp',out_text_temp,out_text],) #shell=[bool])
     if verbose:
         print('Writing Power Spectrum...')
-    np.savetxt(out_cl, np.transpose(cl_list), header=text_cl, fmt='%1.4e')
+    #np.savetxt(out_cl, np.transpose(cl_list), header=text_cl, fmt='%1.4e')
+    np.savetxt(out_cl, cl_list, header=text_cl, fmt='%1.4e')
     if verbose:
         print('Writing CCF...')
-    np.savetxt(out_CCF, np.transpose(CCF_list), header=text_CCF, fmt='%1.4e')
+    #np.savetxt(out_CCF, np.transpose(CCF_list), header=text_CCF, fmt='%1.4e')
+    np.savetxt(out_CCF, CCF_list, header=text_CCF, fmt='%1.4e')
 
     if verbose:
         print('Partial time :',time.time()-t_start,'s')
-        print('\n')
+    print('\n')
     #exit()
 
 t_stop=time.time()
