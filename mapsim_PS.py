@@ -53,7 +53,8 @@ parser.add_argument("--theta_max", type=float, help="theta max (deg)", default=2
 parser.add_argument("--nbins", type=int, help="number of bins for the correlation function", default=10)
 parser.add_argument("--fact", type=float, help="normalization factor for the correlation function (default = 1.0)", default=1.0)
 parser.add_argument("--norm_tif", action='store_true', help="apply normalization to tif files (values from 0 to 255).")
-parser.add_argument("--reject_clean", action='store_true', help="option if you do not need the clean map (e.g. if NSIDE is large).")
+parser.add_argument("--reject_clean", action='store_true', help="option if you do not need to save the clean map.")
+parser.add_argument("--reject_map", action='store_true', help="option if you do not need to save the simulated map (e.g. if NSIDE is large).")
 parser.add_argument("--show_map", action='store_true', help="show maps and projections.")
 parser.add_argument("--show_beam", action='store_true', help="show beams.")
 parser.add_argument("-v","--verbose", action='store_true', help="verbose")
@@ -93,6 +94,7 @@ nbins = args.nbins
 fact = args.fact
 norm_tif = args.norm_tif
 reject_clean = args.reject_clean
+reject_map = args.reject_map
 show_map = args.show_map
 show_beam = args.show_beam
 verbose = args.verbose
@@ -392,7 +394,7 @@ for i in range(N_start+displace,N_stop+1):
             hp.mollview(msim)
             plt.show()
             plt.clf()
-        if not reject_clean:
+        if not reject_map:
             if verbose:
                 print('Saving clean map...')
             hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
@@ -430,7 +432,8 @@ for i in range(N_start+displace,N_stop+1):
         if verbose:
             print('Creating map from Power Spectrum with noise...')
         msim = hp.synfast(cl_temp+NN,NSIDE,new=True,lmax=l_stop)
-        #if not reject_clean:
+        if not reject_map:
+            hp.write_map(out_name,msim,coord='G',fits_IDL=False,overwrite=True)
         #    print('Combining maps...')
         #    msim = msim + mnoise
         if save_noise:
@@ -500,6 +503,14 @@ for i in range(N_start+displace,N_stop+1):
                 #plt.show()
                 plt.clf()
                 '''
+    if not reject_clean:
+        if not add_noise:
+            out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_clean.tif'
+        else:
+            out_tif = out_dir+'msim_'+tag+str(i).zfill(5)+'_wN.tif'
+        moll_image = Image.fromarray(moll_array)
+        moll_image.save(out_tif)
+        del moll_image
     if add_beam:
         # Using pre-loaded beams
         if random_beam:

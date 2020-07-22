@@ -1,0 +1,37 @@
+#Dockerfile for GPU usage
+FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+LABEL maintainer="simone.ammazzalorso@unito.it"
+
+#INSTALL MINICONDA
+RUN apt-get update && apt-get install -y curl
+RUN apt-get install -y --no-install-recommends libnvinfer6=6.0.1-1+cuda10.1 \
+    libnvinfer-dev=6.0.1-1+cuda10.1 \
+    libnvinfer-plugin6=6.0.1-1+cuda10.1
+RUN curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+SHELL ["/bin/bash", "-c"]
+
+RUN bash Miniconda3-latest-Linux-x86_64.sh -b -p /Miniconda3
+ENV PATH /Miniconda3/bin:$PATH
+
+# INSTALL TENSORFLOW AND KERAS
+RUN conda update -n base -c defaults conda
+#RUN conda config --add channels conda-forge
+RUN conda create -n tensorflow2 python=3.8 Pillow h5py
+
+ENV PATH /Miniconda3/envs/tensorflow2/bin:$PATH
+RUN apt-get update && apt-get install -y git
+RUN /bin/bash -c "source activate tensorflow2" && pip install --upgrade tensorflow healpy git+https://github.com/autonomio/talos@1.0 astropy seaborn
+#pip install --upgrade pip && 
+
+RUN /bin/bash -c "source activate tensorflow2" && pip install jinja2
+#
+RUN mkdir /archive && mkdir /archive/home && mkdir /archive/home/sammazza && mkdir /archive/home/sammazza/radioML && mkdir /archive/home/sammazza/radioML/data && mkdir /run_CNN
+#WORKDIR /run_CNN
+#ADD parallel/CNN_parallel.py /run_CNN/CNN_parallel.py
+#ADD parallel/utility/image_provider.py /run_CNN/utility/image_provider.py
+#ADD parallel/utility/network.py /run_CNN/utility/network.py
+#ADD parallel/utility/network_refined.py /run_CNN/utility/network_refined.py
+WORKDIR /archive/home/sammazza/radioML
+
+# Overwrite the entrypoint of the base Docker image (python)
+CMD ["ls -lh","/bin/bash","-c"]
