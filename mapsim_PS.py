@@ -26,6 +26,12 @@ parser.add_argument("N_start", type=int, help="start number of the map", default
 parser.add_argument("N_stop", type=int, help="end number of the map", default=0)
 parser.add_argument("--tag", type=str, help="tag of the run", default='')
 parser.add_argument("--path", type=str, help="general path", default='')
+parser.add_argument("--onehalo", type=str, help="1-halo file", default='')
+parser.add_argument("--twohalo", type=str, help="2-halo file", default='')
+parser.add_argument("--nside", type=int, help="NSIDE of the simulated map", default=1024)
+parser.add_argument("--lstart", type=int, help="starting multipole", default=5)
+parser.add_argument("--lstop", type=int, help="last multipole (be consinstent with map NSIDE!)", default=1500)
+parser.add_argument("--xsize", type=int, help="pixel number of the x axis for the cartesia projection (y size will be half of that)", default=2000)
 parser.add_argument("--out_dir", type=str, help="output directory", default='')
 parser.add_argument("--N1h_low", type=float, help="lower normalization for 1-halo term", default=0.1)
 parser.add_argument("--N1h_up", type=float, help="upper normalization for 1-halo term", default=10.0)
@@ -220,20 +226,34 @@ if add_beam:
             #NOTE: FINISH THIS PART!
         beams.append(beam_data)
 
+
+'''
+###Geneal options
 #power spectrum files; assumed to be normalized with l*(l+1)/(2 Pi)
 in_1halo = 'Cl_radio_1.dat'
 in_2halo = 'Cl_radio_2.dat'
-
-###Geneal options
 #Healpix size
 NSIDE = 4096
 #multipole range
 l_start = 5
 l_stop = 10000
+'''
+
+###Geneal options
+#power spectrum files; assumed to be normalized with l*(l+1)/(2 Pi)
+in_1halo = args.onehalo
+in_2halo = args.twohalo
+#Healpix size
+NSIDE = args.nside
+#multipole range
+l_start = args.lstart
+l_stop = args.lstop
+
 ncl = 30
 idx = np.logspace(np.log10(l_start),np.log10(l_stop-1),num=ncl,dtype=int)
 #size of tif image
-x_size = 20000
+#x_size = 20000
+x_size = args.xsize
 y_size = int(x_size/2)
 
 plot_test = False
